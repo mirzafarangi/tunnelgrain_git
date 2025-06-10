@@ -12,8 +12,8 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
 
 # Configuration
-STRIPE_PUBLISHABLE_KEY = 'pk_test_your_stripe_key'  # Replace with your key
-STRIPE_SECRET_KEY = 'sk_test_your_stripe_key'      # Replace with your key
+STRIPE_PUBLISHABLE_KEY = 'pk_live_51RYReqCaYnJXNs8zKtZk9lQzn8ZCzKU5AzT3ZxZLwOypTEFst36TGxsv3UgCZqG9y6wGtLgaf450sNSL7xZQSlu000ygmqfy6I'  # Replace with your key
+STRIPE_SECRET_KEY = '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'      # Replace with your key
 stripe.api_key = STRIPE_SECRET_KEY
 
 # Paths
