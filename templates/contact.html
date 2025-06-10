@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Us - SecureVPN{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="text-center mb-5">
+                    <h1 class="fw-bold mb-4">
+                        <i class="fas fa-envelope text-primary me-3"></i>
+                        Contact Us
+                    </h1>
+                    <p class="lead text-muted">
+                        Need help? We're here for you 24/7
+                    </p>
+                </div>
+                
+                <div class="row mb-5">
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 border-0 shadow-sm text-center">
+                            <div class="card-body p-4">
+                                <div class="feature-icon mx-auto mb-3">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <h5 class="fw-bold mb-3">Email Support</h5>
+                                <p class="text-muted mb-3">Get help via email</p>
+                                <a href="mailto:support@securevpn.com" class="btn btn-outline-primary">
+                                    support@securevpn.com
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 border-0 shadow-sm text-center">
+                            <div class="card-body p-4">
+                                <div class="feature-icon mx-auto mb-3">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                <h5 class="fw-bold mb-3">Live Chat</h5>
+                                <p class="text-muted mb-3">Instant support chat</p>
+                                <button class="btn btn-outline-primary" onclick="alert('Live chat coming soon!')">
+                                    Start Chat
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 border-0 shadow-sm text-center">
+                            <div class="card-body p-4">
+                                <div class="feature-icon mx-auto mb-3">
+                                    <i class="fas fa-question-circle"></i>
+                                </div>
+                                <h5 class="fw-bold mb-3">FAQ</h5>
+                                <p class="text-muted mb-3">Common questions</p>
+                                <button class="btn btn-outline-primary" onclick="scrollToFAQ()">
+                                    View FAQ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card border-0 shadow-sm mb-5">
+                    <div class="card-body p-5">
+                        <h3 class="fw-bold mb-4 text-center">Send us a Message</h3>
+                        
+                        <form id="contactForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="name" class="form-label fw-bold">Name</label>
+                                    <input type="text" class="form-control" id="name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label fw-bold">Email</label>
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="subject" class="form-label fw-bold">Subject</label>
+                                <select class="form-control" id="subject" required>
+                                    <option value="">Select a topic...</option>
+                                    <option value="technical">Technical Support</option>
+                                    <option value="billing">Billing Question</option>
+                                    <option value="refund">Refund Request</option>
+                                    <option value="general">General Inquiry</option>
+                                    <option value="feature">Feature Request</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="message" class="form-label fw-bold">Message</label>
+                                <textarea class="form-control" id="message" rows="5" placeholder="Tell us how we can help..." required></textarea>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-gradient btn-lg px-5">
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    Send Message
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="faq" class="card border-0 shadow-sm">
+                    <div class="card-body p-5">
+                        <h3 class="fw-bold mb-4 text-center">Frequently Asked Questions</h3>
+                        
+                        <div class="accordion" id="faqAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                        How do I set up the VPN?
+                                    </button>
+                                </h2>
+                                <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        Download the WireGuard app, then import your config file or scan the QR code. The VPN will connect automatically.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                        What devices are supported?
+                                    </button>
+                                </h2>
+                                <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        All devices that support WireGuard: Windows, Mac, Linux, Android, iOS, and routers.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                        Is there a bandwidth limit?
+                                    </button>
+                                </h2>
+                                <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        No bandwidth limits! Enjoy unlimited high-speed browsing, streaming, and downloading.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                        How do I cancel my subscription?
+                                    </button>
+                                </h2>
+                                <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        Contact our support team via email. We offer a 30-day money-back guarantee for any reason.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                        What if the VPN doesn't work?
+                                    </button>
+                                </h2>
+                                <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        Contact support immediately. We'll troubleshoot the issue or provide a full refund within 30 days.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('contactForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email').value;
+        const subject = document.getElementById('subject').value;
+        const message = document.getElementById('message').value;
+        
+        // Simulate form submission
+        alert(`Thank you ${name}! Your message has been sent. We'll get back to you at ${email} within 24 hours.`);
+        
+        // Reset form
+        this.reset();
+    });
+    
+    function scrollToFAQ() {
+        document.getElementById('faq').scrollIntoView({ 
+            behavior: 'smooth' 
+        });
+    }
+</script>
+{% endblock %}

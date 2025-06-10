@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Success - SecureVPN{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-lg">
+                    <div class="card-body p-5 text-center">
+                        <div class="mb-4">
+                            <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                        </div>
+                        
+                        <h1 class="fw-bold text-success mb-3">Payment Successful!</h1>
+                        <p class="lead text-muted mb-4">
+                            Thank you for your purchase. Your VPN is ready to use!
+                        </p>
+                        
+                        <div class="alert alert-success mb-4">
+                            <div class="d-flex align-items-center justify-content-center mb-2">
+                                <i class="fas fa-user-check me-2"></i>
+                                <strong>VPN Account: {{ slot_id }}</strong>
+                            </div>
+                            <small class="text-muted">Valid for 30 days from today</small>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <a href="/download-monthly-config" class="btn btn-gradient w-100 py-3">
+                                    <i class="fas fa-download me-2"></i>
+                                    Download Config File
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="/download-monthly-qr" class="btn btn-outline-primary w-100 py-3">
+                                    <i class="fas fa-qrcode me-2"></i>
+                                    Download QR Code
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-light rounded p-4 mb-4">
+                            <h5 class="fw-bold mb-3">Quick Setup Instructions</h5>
+                            
+                            <div class="row text-start">
+                                <div class="col-md-6">
+                                    <h6 class="fw-bold">📱 Mobile Setup</h6>
+                                    <ol class="small">
+                                        <li>Install WireGuard from app store</li>
+                                        <li>Open app → "Add Tunnel"</li>
+                                        <li>Scan QR code or import config</li>
+                                        <li>Toggle connection ON</li>
+                                    </ol>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6 class="fw-bold">💻 Desktop Setup</h6>
+                                    <ol class="small">
+                                        <li>Download WireGuard client</li>
+                                        <li>Open → "Add Tunnel"</li>
+                                        <li>Select your config file</li>
+                                        <li>Click "Activate"</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-shield-alt text-success me-2"></i>
+                                    <small class="text-muted">Military-grade encryption</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-bolt text-warning me-2"></i>
+                                    <small class="text-muted">High-speed servers</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <p class="small text-muted mb-3">
+                                Need help? Our support team is ready to assist you 24/7.
+                            </p>
+                            
+                            <div class="d-flex gap-2 justify-content-center">
+                                <a href="{{ url_for('contact') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-headset me-1"></i>
+                                    Get Support
+                                </a>
+                                <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-home me-1"></i>
+                                    Back to Home
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Important Notes -->
+                <div class="card border-0 bg-light mt-4">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold mb-3">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            Important Notes
+                        </h6>
+                        
+                        <ul class="list-unstyled small mb-0">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Save your config files securely - you can re-download them anytime
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                VPN works on multiple devices with the same config
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                30-day money-back guarantee if you're not satisfied
+                            </li>
+                            <li class="mb-0">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Need to test first? Try our free 15-minute test VPN
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

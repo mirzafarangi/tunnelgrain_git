@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VPN Store{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hero-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+        }
+        .nav-pills .nav-link {
+            border-radius: 50px;
+            margin: 0 5px;
+        }
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+        }
+        .btn-gradient:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            margin: 0 auto 15px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-online { background-color: #28a745; }
+        .status-busy { background-color: #ffc107; }
+        .status-offline { background-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark hero-gradient sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">
+                <i class="fas fa-shield-alt me-2"></i>SecureVPN
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('home') }}">
+                            <i class="fas fa-home me-1"></i>Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('test') }}">
+                            <i class="fas fa-flask me-1"></i>Free Test
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('refund') }}">
+                            <i class="fas fa-undo me-1"></i>Refund Policy
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('contact') }}">
+                            <i class="fas fa-envelope me-1"></i>Contact
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-shield-alt me-2"></i>SecureVPN</h5>
+                    <p class="mb-0">Fast, secure, and reliable VPN service.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="mb-2">
+                        <span class="status-indicator status-online"></span>
+                        <small>Server Status: Online</small>
+                    </div>
+                    <div>
+                        <small class="text-muted">© 2024 SecureVPN. All rights reserved.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Real-time slot status updates
+        function updateSlotStatus() {
+            fetch('/api/slot-status')
+                .then(response => response.json())
+                .then(data => {
+                    const monthlyStatus = document.getElementById('monthly-status');
+                    const testStatus = document.getElementById('test-status');
+                    
+                    if (monthlyStatus) {
+                        const monthlyPercent = (data.monthly_available / data.total_monthly) * 100;
+                        monthlyStatus.innerHTML = `
+                            <span class="status-indicator ${monthlyPercent > 50 ? 'status-online' : monthlyPercent > 20 ? 'status-busy' : 'status-offline'}"></span>
+                            ${data.monthly_available}/${data.total_monthly} Available
+                        `;
+                    }
+                    
+                    if (testStatus) {
+                        const testPercent = (data.test_available / data.total_test) * 100;
+                        testStatus.innerHTML = `
+                            <span class="status-indicator ${testPercent > 50 ? 'status-online' : testPercent > 20 ? 'status-busy' : 'status-offline'}"></span>
+                            ${data.test_available}/${data.total_test} Available
+                        `;
+                    }
+                })
+                .catch(err => console.log('Status update failed:', err));
+        }
+        
+        // Update every 30 seconds
+        setInterval(updateSlotStatus, 30000);
+        updateSlotStatus(); // Initial load
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

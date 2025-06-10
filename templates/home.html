@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Home - SecureVPN{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-gradient py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">
+                    Premium VPN Access
+                    <span class="d-block text-warning">$9.99/month</span>
+                </h1>
+                <p class="lead mb-4">
+                    Get secure, high-speed internet access with our premium VPN service. 
+                    Perfect for streaming, browsing, and protecting your privacy.
+                </p>
+                <div class="d-flex gap-3 mb-4">
+                    <button class="btn btn-light btn-lg px-4" onclick="purchaseVPN()">
+                        <i class="fas fa-shopping-cart me-2"></i>Buy Now - $9.99
+                    </button>
+                    <a href="{{ url_for('test') }}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="fas fa-flask me-2"></i>Try Free Test
+                    </a>
+                </div>
+                <div class="row text-center">
+                    <div class="col">
+                        <small id="monthly-status" class="text-light">
+                            <span class="status-indicator status-online"></span>
+                            Loading...
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <div class="position-relative">
+                    <i class="fas fa-shield-alt text-light" style="font-size: 200px; opacity: 0.3;"></i>
+                    <div class="position-absolute top-50 start-50 translate-middle">
+                        <i class="fas fa-lock text-warning" style="font-size: 60px;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col">
+                <h2 class="fw-bold mb-3">Why Choose SecureVPN?</h2>
+                <p class="text-muted">Fast, secure, and reliable VPN service with premium features</p>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 border-0 shadow-sm card-hover">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h5 class="fw-bold mb-3">Lightning Fast</h5>
+                        <p class="text-muted">
+                            High-speed servers optimized for streaming, gaming, and browsing. 
+                            No throttling, no limits.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 border-0 shadow-sm card-hover">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h5 class="fw-bold mb-3">Military Grade Security</h5>
+                        <p class="text-muted">
+                            WireGuard protocol with AES-256 encryption. 
+                            Your data is protected with the strongest security.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 border-0 shadow-sm card-hover">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon">
+                            <i class="fas fa-eye-slash"></i>
+                        </div>
+                        <h5 class="fw-bold mb-3">Zero Logs Policy</h5>
+                        <p class="text-muted">
+                            We don't track, store, or monitor your online activity. 
+                            Complete privacy guaranteed.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing Section -->
+<section class="bg-light py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-lg">
+                    <div class="card-header hero-gradient text-white text-center py-4">
+                        <h3 class="fw-bold mb-0">Monthly VPN Access</h3>
+                    </div>
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <span class="display-4 fw-bold text-primary">$9.99</span>
+                            <span class="text-muted">/month</span>
+                        </div>
+                        
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Unlimited bandwidth
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                High-speed servers
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                WireGuard protocol
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                24/7 customer support
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                30-day money back guarantee
+                            </li>
+                        </ul>
+                        
+                        <button class="btn btn-gradient btn-lg w-100 py-3" onclick="purchaseVPN()">
+                            <i class="fas fa-credit-card me-2"></i>
+                            Purchase Now - $9.99
+                        </button>
+                        
+                        <div class="text-center mt-3">
+                            <small class="text-muted">Secure payment via Stripe</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How it Works -->
+<section class="py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col">
+                <h2 class="fw-bold mb-3">How It Works</h2>
+                <p class="text-muted">Get connected in 3 simple steps</p>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="text-center">
+                    <div class="feature-icon">
+                        <span class="fw-bold">1</span>
+                    </div>
+                    <h5 class="fw-bold mb-3">Purchase</h5>
+                    <p class="text-muted">Click purchase and complete secure payment via Stripe</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="text-center">
+                    <div class="feature-icon">
+                        <span class="fw-bold">2</span>
+                    </div>
+                    <h5 class="fw-bold mb-3">Download</h5>
+                    <p class="text-muted">Get your VPN config file and QR code instantly</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="text-center">
+                    <div class="feature-icon">
+                        <span class="fw-bold">3</span>
+                    </div>
+                    <h5 class="fw-bold mb-3">Connect</h5>
+                    <p class="text-muted">Import to WireGuard app and enjoy secure browsing</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function purchaseVPN() {
+        try {
+            const response = await fetch('/create-checkout-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+            
+            // Redirect to Stripe Checkout
+            window.location.href = data.checkout_url;
+            
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error creating checkout session. Please try again.');
+        }
+    }
+</script>
+{% endblock %}
