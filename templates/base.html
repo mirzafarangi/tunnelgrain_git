@@ -3,97 +3,294 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}VPN Store{% endblock %}</title>
+    <title>{% block title %}Tunnelgrain{% endblock %}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        .hero-gradient {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        :root {
+            --primary-bg: #ffffff;
+            --secondary-bg: #f8f9fa;
+            --tertiary-bg: #e9ecef;
+            --accent-color: #495057;
+            --accent-hover: #343a40;
+            --text-color: #212529;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --mono-font: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
         }
-        .card-hover:hover {
-            transform: translateY(-5px);
-            transition: transform 0.3s ease;
+
+        * {
+            box-sizing: border-box;
         }
-        .nav-pills .nav-link {
-            border-radius: 50px;
-            margin: 0 5px;
+
+        body {
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            font-size: 16px;
         }
-        .nav-pills .nav-link.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        /* Clean, minimal header */
+        .header {
+            background-color: var(--secondary-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
         }
-        .btn-gradient {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        .brand {
+            font-family: var(--mono-font);
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: var(--text-color);
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .brand:hover {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        /* Navigation */
+        .nav-clean {
             border: none;
+            background: transparent;
+        }
+
+        .nav-clean .nav-link {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            padding: 0.5rem 1rem;
+            margin: 0 0.25rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-clean .nav-link:hover {
+            color: var(--text-color);
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .nav-clean .nav-link.active {
+            color: var(--text-color);
+            background-color: var(--tertiary-bg);
+        }
+
+        /* Content styling */
+        .content-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .page-title {
+            font-weight: 300;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+            letter-spacing: -1px;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            font-weight: 400;
+        }
+
+        /* Cards */
+        .card-clean {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--primary-bg);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .card-clean:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Buttons */
+        .btn-primary-clean {
+            background-color: var(--accent-color);
+            border: 1px solid var(--accent-color);
             color: white;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.95rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
         }
-        .btn-gradient:hover {
-            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+
+        .btn-primary-clean:hover {
+            background-color: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: white;
+            transform: translateY(-1px);
         }
-        .feature-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        .btn-secondary-clean {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.75rem 1.5rem;
+            font-size: 0.95rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary-clean:hover {
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+            text-decoration: none;
+        }
+
+        /* Status indicators */
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-online { background-color: var(--success-color); }
+        .status-busy { background-color: var(--warning-color); }
+        .status-offline { background-color: var(--danger-color); }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .content-wrapper {
+                padding: 1rem;
+            }
+
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .nav-clean {
+                flex-direction: column;
+                align-items: start;
+            }
+
+            .nav-clean .nav-link {
+                margin: 0.25rem 0;
+                padding: 0.5rem 0;
+            }
+
+            .btn-primary-clean,
+            .btn-secondary-clean {
+                width: 100%;
+                text-align: center;
+                margin-bottom: 0.5rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .page-title {
+                font-size: 1.75rem;
+            }
+
+            .page-subtitle {
+                font-size: 1rem;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            background-color: var(--secondary-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 2rem 0;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            margin-bottom: 1rem;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            margin: 0 1rem;
+            font-family: var(--mono-font);
+            font-size: 0.85rem;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-color);
+        }
+
+        /* Academic-style lists */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 24px;
-            margin: 0 auto 15px;
         }
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
+
+        .feature-list li:last-child {
+            border-bottom: none;
         }
-        .status-online { background-color: #28a745; }
-        .status-busy { background-color: #ffc107; }
-        .status-offline { background-color: #dc3545; }
+
+        .feature-list li i {
+            color: var(--success-color);
+            width: 20px;
+            margin-right: 1rem;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: var(--mono-font);
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark hero-gradient sticky-top">
+    <!-- Header -->
+    <header class="header">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">
-                <i class="fas fa-shield-alt me-2"></i>SecureVPN
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('home') }}">
-                            <i class="fas fa-home me-1"></i>Home
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('test') }}">
-                            <i class="fas fa-flask me-1"></i>Free Test
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('refund') }}">
-                            <i class="fas fa-undo me-1"></i>Refund Policy
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('contact') }}">
-                            <i class="fas fa-envelope me-1"></i>Contact
-                        </a>
-                    </li>
-                </ul>
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <a href="{{ url_for('home') }}" class="brand">tunnelgrain</a>
+                </div>
+                <div class="col-md-6">
+                    <nav class="nav nav-clean justify-content-md-end">
+                        <a class="nav-link" href="{{ url_for('home') }}">Home</a>
+                        <a class="nav-link" href="{{ url_for('test') }}">Test</a>
+                        <a class="nav-link" href="{{ url_for('refund') }}">Policy</a>
+                        <a class="nav-link" href="{{ url_for('contact') }}">Contact</a>
+                    </nav>
+                </div>
             </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Main Content -->
     <main>
@@ -101,23 +298,14 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-light py-4 mt-5">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5><i class="fas fa-shield-alt me-2"></i>SecureVPN</h5>
-                    <p class="mb-0">Fast, secure, and reliable VPN service.</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <div class="mb-2">
-                        <span class="status-indicator status-online"></span>
-                        <small>Server Status: Online</small>
-                    </div>
-                    <div>
-                        <small class="text-muted">© 2024 SecureVPN. All rights reserved.</small>
-                    </div>
-                </div>
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="{{ url_for('refund') }}">Service Policy</a>
+                <a href="{{ url_for('contact') }}">Contact</a>
+                <a href="/admin">Status</a>
             </div>
+            <p>&copy; 2024 Tunnelgrain. Private WireGuard VPN service.</p>
         </div>
     </footer>
 
@@ -134,16 +322,16 @@
                     if (monthlyStatus) {
                         const monthlyPercent = (data.monthly_available / data.total_monthly) * 100;
                         monthlyStatus.innerHTML = `
-                            <span class="status-indicator ${monthlyPercent > 50 ? 'status-online' : monthlyPercent > 20 ? 'status-busy' : 'status-offline'}"></span>
-                            ${data.monthly_available}/${data.total_monthly} Available
+                            <span class="status-dot ${monthlyPercent > 50 ? 'status-online' : monthlyPercent > 20 ? 'status-busy' : 'status-offline'}"></span>
+                            ${data.monthly_available}/${data.total_monthly} available
                         `;
                     }
                     
                     if (testStatus) {
                         const testPercent = (data.test_available / data.total_test) * 100;
                         testStatus.innerHTML = `
-                            <span class="status-indicator ${testPercent > 50 ? 'status-online' : testPercent > 20 ? 'status-busy' : 'status-offline'}"></span>
-                            ${data.test_available}/${data.total_test} Available
+                            <span class="status-dot ${testPercent > 50 ? 'status-online' : testPercent > 20 ? 'status-busy' : 'status-offline'}"></span>
+                            ${data.test_available}/${data.total_test} available
                         `;
                     }
                 })

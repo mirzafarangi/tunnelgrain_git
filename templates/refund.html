@@ -1,170 +1,141 @@
 {% extends "base.html" %}
 
-{% block title %}Refund Policy - SecureVPN{% endblock %}
+{% block title %}Service Policy - Tunnelgrain{% endblock %}
 
 {% block content %}
-<section class="py-5">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="text-center mb-5">
-                    <h1 class="fw-bold mb-4">
-                        <i class="fas fa-undo text-primary me-3"></i>
-                        Refund Policy
-                    </h1>
-                    <p class="lead text-muted">
-                        We stand behind our service with a 30-day money-back guarantee
+<div class="content-wrapper">
+    <h1 class="page-title">Service Policy</h1>
+    <p class="page-subtitle">
+        Clear terms for our VPN service usage and support
+    </p>
+    
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- No Refund Policy -->
+            <div class="card-clean p-4 mb-4">
+                <h3 class="h5 mb-3">Payment & Refund Policy</h3>
+                <div class="mb-4">
+                    <h6 class="text-dark">No Refunds Policy</h6>
+                    <p>All sales are final. We do not offer refunds for VPN purchases except in cases of proven technical failure on our end.</p>
+                    
+                    <h6 class="text-dark">Why No Refunds?</h6>
+                    <ul class="small">
+                        <li>We provide a free 15-minute test before purchase</li>
+                        <li>You can verify compatibility and performance before buying</li>
+                        <li>This keeps our service affordable and sustainable</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-dark">Technical Failure Exception</h6>
+                    <p>Refunds may be considered if:</p>
+                    <ul class="small">
+                        <li>Our servers are down for more than 48 consecutive hours</li>
+                        <li>Your VPN config is technically faulty due to our error</li>
+                        <li>Service is completely inaccessible due to our infrastructure failure</li>
+                    </ul>
+                    <p class="small text-muted">
+                        Technical failures must be documented and verified by our support team.
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Service Terms -->
+            <div class="card-clean p-4 mb-4">
+                <h3 class="h5 mb-3">Service Terms</h3>
+                
+                <div class="mb-4">
+                    <h6 class="text-dark">Access Duration</h6>
+                    <ul class="small">
+                        <li>Monthly VPN: 30 days from purchase date</li>
+                        <li>Test VPN: 15 minutes from activation</li>
+                        <li>No extensions or rollover of unused time</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-dark">Fair Usage</h6>
+                    <ul class="small">
+                        <li>Service is for legitimate personal use only</li>
+                        <li>No commercial reselling or sharing of credentials</li>
+                        <li>No illegal activities or network abuse</li>
+                        <li>We reserve the right to terminate service for violations</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-dark">Technical Limitations</h6>
+                    <ul class="small">
+                        <li>Limited to 10 concurrent monthly users</li>
+                        <li>Service availability depends on server status</li>
+                        <li>Performance may vary based on location and network conditions</li>
+                        <li>We provide service "as-is" without performance guarantees</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Support -->
+            <div class="card-clean p-4 mb-4">
+                <h3 class="h5 mb-3">Technical Support</h3>
+                
+                <div class="mb-4">
+                    <h6 class="text-dark">What We Help With</h6>
+                    <ul class="small">
+                        <li>WireGuard configuration assistance</li>
+                        <li>Connection troubleshooting</li>
+                        <li>Config file re-delivery</li>
+                        <li>Server status inquiries</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-dark">Response Times</h6>
+                    <p class="small">
+                        Support requests are handled on a best-effort basis. 
+                        Response time typically 24-48 hours via email.
                     </p>
                 </div>
                 
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body p-5">
-                        <div class="row align-items-center mb-4">
-                            <div class="col-auto">
-                                <div class="feature-icon">
-                                    <i class="fas fa-calendar-alt"></i>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <h3 class="fw-bold mb-2">30-Day Money Back Guarantee</h3>
-                                <p class="text-muted mb-0">
-                                    Not satisfied? Get a full refund within 30 days of purchase.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <h4 class="fw-bold mb-3">How to Request a Refund</h4>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex">
-                                    <div class="feature-icon me-3" style="width: 40px; height: 40px; font-size: 16px;">
-                                        <span class="fw-bold">1</span>
-                                    </div>
-                                    <div>
-                                        <h6 class="fw-bold">Contact Support</h6>
-                                        <p class="small text-muted">
-                                            Email us at support@securevpn.com with your order details
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex">
-                                    <div class="feature-icon me-3" style="width: 40px; height: 40px; font-size: 16px;">
-                                        <span class="fw-bold">2</span>
-                                    </div>
-                                    <div>
-                                        <h6 class="fw-bold">Quick Processing</h6>
-                                        <p class="small text-muted">
-                                            Refunds are processed within 3-5 business days
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="mb-4">
+                    <h6 class="text-dark">Contact Methods</h6>
+                    <ul class="small">
+                        <li>Email: <a href="mailto:support@tunnelgrain.com">support@tunnelgrain.com</a></li>
+                        <li>Include your purchase details and detailed description of the issue</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Privacy -->
+            <div class="card-clean p-4 mb-4">
+                <h3 class="h5 mb-3">Privacy Practices</h3>
+                
+                <div class="mb-4">
+                    <h6 class="text-dark">What We Don't Log</h6>
+                    <ul class="small">
+                        <li>Your browsing activity or destinations</li>
+                        <li>Connection timestamps or duration</li>
+                        <li>Data transferred or bandwidth usage</li>
+                        <li>DNS requests or IP addresses visited</li>
+                    </ul>
                 </div>
                 
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body p-4">
-                        <h4 class="fw-bold mb-3">Refund Conditions</h4>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="text-success fw-bold mb-3">
-                                    <i class="fas fa-check me-2"></i>Eligible for Refund
-                                </h6>
-                                <ul class="list-unstyled">
-                                    <li class="mb-2">
-                                        <i class="fas fa-check text-success me-2"></i>
-                                        Service not working as expected
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-check text-success me-2"></i>
-                                        Technical issues we cannot resolve
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-check text-success me-2"></i>
-                                        Speed issues on our end
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-check text-success me-2"></i>
-                                        Service unavailability
-                                    </li>
-                                </ul>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <h6 class="text-warning fw-bold mb-3">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>Conditions Apply
-                                </h6>
-                                <ul class="list-unstyled">
-                                    <li class="mb-2">
-                                        <i class="fas fa-info text-primary me-2"></i>
-                                        Must be within 30 days of purchase
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-info text-primary me-2"></i>
-                                        Valid reason required
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-info text-primary me-2"></i>
-                                        Original payment method refund
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-info text-primary me-2"></i>
-                                        Processing fees may apply
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+                <div class="mb-4">
+                    <h6 class="text-dark">What We Do Track</h6>
+                    <ul class="small">
+                        <li>VPN slot assignments for service management</li>
+                        <li>Payment records for billing purposes</li>
+                        <li>Basic server performance metrics</li>
+                        <li>Support ticket history</li>
+                    </ul>
                 </div>
-                
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body p-4">
-                        <h4 class="fw-bold mb-3">Alternative Solutions</h4>
-                        <p class="mb-3">
-                            Before requesting a refund, we're happy to help resolve any issues:
-                        </p>
-                        
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <div class="text-center p-3 bg-light rounded">
-                                    <i class="fas fa-headset text-primary mb-2" style="font-size: 2rem;"></i>
-                                    <h6 class="fw-bold">24/7 Support</h6>
-                                    <small class="text-muted">Get help anytime</small>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <div class="text-center p-3 bg-light rounded">
-                                    <i class="fas fa-tools text-primary mb-2" style="font-size: 2rem;"></i>
-                                    <h6 class="fw-bold">Troubleshooting</h6>
-                                    <small class="text-muted">Fix technical issues</small>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <div class="text-center p-3 bg-light rounded">
-                                    <i class="fas fa-exchange-alt text-primary mb-2" style="font-size: 2rem;"></i>
-                                    <h6 class="fw-bold">Server Change</h6>
-                                    <small class="text-muted">Try different server</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="text-center mt-5">
-                    <a href="{{ url_for('contact') }}" class="btn btn-gradient btn-lg px-5">
-                        <i class="fas fa-envelope me-2"></i>
-                        Contact Support
-                    </a>
-                </div>
+            </div>
+            
+            <!-- Contact -->
+            <div class="text-center">
+                <p class="text-muted">Questions about our service policy?</p>
+                <a href="{{ url_for('contact') }}" class="btn-primary-clean">Contact Support</a>
             </div>
         </div>
     </div>
-</section>
+</div>
 {% endblock %}

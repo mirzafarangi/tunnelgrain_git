@@ -12,8 +12,8 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
 
 # Configuration
-STRIPE_PUBLISHABLE_KEY = 'pk_live_51RYReqCaYnJXNs8zKtZk9lQzn8ZCzKU5AzT3ZxZLwOypTEFst36TGxsv3UgCZqG9y6wGtLgaf450sNSL7xZQSlu000ygmqfy6I'  # Replace with your key
-STRIPE_SECRET_KEY = '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'      # Replace with your key
+STRIPE_PUBLISHABLE_KEY = 'pk_live_51RYReqCaYnJXNs8zKtZk9lQzn8ZCzKU5AzT3ZxZLwOypTEFst36TGxsv3UgCZqG9y6wGtLgaf450sNSL7xZQSlu000ygmqfy6I'
+STRIPE_SECRET_KEY = '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'
 stripe.api_key = STRIPE_SECRET_KEY
 
 # Paths
@@ -60,7 +60,12 @@ class SlotManager:
             return None
         
         now = datetime.now()
-        expires_at = now + timedelta(days=duration_days)
+        if slot_type == 'test':
+            # 15 minutes for test
+            expires_at = now + timedelta(minutes=15)
+        else:
+            # 30 days for monthly
+            expires_at = now + timedelta(days=duration_days)
         
         self.slots[slot_type][slot_id].update({
             'available': False,
@@ -113,9 +118,9 @@ def get_test_vpn():
     """Assign a 15-minute test VPN"""
     slot_manager.cleanup_expired_slots()
     
-    slot_id = slot_manager.assign_slot('test', duration_days=0.01)  # ~15 minutes
+    slot_id = slot_manager.assign_slot('test')
     if not slot_id:
-        return jsonify({'error': 'No test slots available. Try again later.'}), 503
+        return jsonify({'error': 'No test slots available. Please try again later.'}), 503
     
     # Store in session for download
     session['test_slot'] = slot_id
@@ -140,7 +145,7 @@ def download_test_config():
     if not os.path.exists(config_path):
         return "Config file not found", 404
     
-    return send_file(config_path, as_attachment=True, download_name=f'{slot_id}.conf')
+    return send_file(config_path, as_attachment=True, download_name=f'tunnelgrain_{slot_id}.conf')
 
 @app.route('/download-test-qr')
 def download_test_qr():
@@ -154,7 +159,7 @@ def download_test_qr():
     if not os.path.exists(qr_path):
         return "QR code not found", 404
     
-    return send_file(qr_path, as_attachment=True, download_name=f'{slot_id}_qr.png')
+    return send_file(qr_path, as_attachment=True, download_name=f'tunnelgrain_{slot_id}_qr.png')
 
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
@@ -164,7 +169,7 @@ def create_checkout_session():
         
         # Check if slots available
         if not slot_manager.get_available_slot('monthly'):
-            return jsonify({'error': 'No monthly slots available'}), 503
+            return jsonify({'error': 'No monthly slots available. Please try again later.'}), 503
         
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -172,8 +177,8 @@ def create_checkout_session():
                 'price_data': {
                     'currency': 'usd',
                     'product_data': {
-                        'name': 'Monthly VPN Access',
-                        'description': 'High-speed VPN access for 30 days'
+                        'name': 'Tunnelgrain Monthly VPN',
+                        'description': 'Private WireGuard VPN access for 30 days'
                     },
                     'unit_amount': 999,  # $9.99 in cents
                 },
@@ -213,7 +218,7 @@ def payment_success():
                 session['payment_session'] = session_id
                 return render_template('payment_success.html', slot_id=slot_id)
             else:
-                return "No slots available - contact support for refund", 503
+                return "No slots available - contact support", 503
         else:
             return "Payment not completed", 400
             
@@ -232,7 +237,7 @@ def download_monthly_config():
     if not os.path.exists(config_path):
         return "Config file not found", 404
     
-    return send_file(config_path, as_attachment=True, download_name=f'{slot_id}.conf')
+    return send_file(config_path, as_attachment=True, download_name=f'tunnelgrain_{slot_id}.conf')
 
 @app.route('/download-monthly-qr')
 def download_monthly_qr():
@@ -246,7 +251,7 @@ def download_monthly_qr():
     if not os.path.exists(qr_path):
         return "QR code not found", 404
     
-    return send_file(qr_path, as_attachment=True, download_name=f'{slot_id}_qr.png')
+    return send_file(qr_path, as_attachment=True, download_name=f'tunnelgrain_{slot_id}_qr.png')
 
 @app.route('/admin')
 def admin():
