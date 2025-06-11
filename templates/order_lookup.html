@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Check Your Order - Tunnelgrain{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="card-modern p-5 text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-search text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    
+                    <h2 class="fw-bold mb-3">Check Your VPN Status</h2>
+                    <p class="text-muted mb-4">
+                        Enter your order number to check your VPN expiration and download status.
+                        No personal information required.
+                    </p>
+                    
+                    <form id="orderForm">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Order Number</label>
+                            <input type="text" class="form-control-modern text-center" 
+                                   id="orderNumber" placeholder="42XXXXXX" 
+                                   style="font-family: monospace; font-size: 1.2rem;"
+                                   maxlength="8" required>
+                            <small class="text-muted">
+                                8-digit number starting with "42" from your purchase confirmation
+                            </small>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary-custom btn-lg w-100">
+                            <i class="fas fa-search me-2"></i>
+                            Check Order Status
+                        </button>
+                    </form>
+                    
+                    <div id="orderResult" class="mt-4" style="display: none;">
+                        <!-- Results will be inserted here -->
+                    </div>
+                    
+                    <div class="mt-4">
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt me-1"></i>
+                            No personal data stored • Privacy protected
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('orderForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const orderNumber = document.getElementById('orderNumber').value.trim().toUpperCase();
+    const resultDiv = document.getElementById('orderResult');
+    
+    if (!orderNumber.match(/^42[A-Z0-9]{6}$/)) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Please enter a valid 8-digit order number starting with "42"
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/check-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `order_number=${orderNumber}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle me-2"></i>
+                    ${data.error}
+                </div>
+            `;
+        } else if (data.order_found) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Order Found!</strong>
+                    </div>
+                    <div class="row text-start">
+                        <div class="col-6">
+                            <small class="text-muted">Status:</small><br>
+                            <span class="badge ${data.status === 'active' ? 'bg-success' : 'bg-danger'}">${data.status}</span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Time Remaining:</small><br>
+                            <strong>${data.time_remaining}</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Order not found. Please check your order number or contact support.
+                </div>
+            `;
+        }
+        
+        resultDiv.style.display = 'block';
+        
+    } catch (error) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Connection error. Please try again.
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+    }
+});
+
+// Auto-format input
+document.getElementById('orderNumber').addEventListener('input', function(e) {
+    let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (value.length > 8) value = value.substring(0, 8);
+    e.target.value = value;
+});
+</script>
+{% endblock %}

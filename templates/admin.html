@@ -13,9 +13,14 @@
                 </h1>
                 <p class="text-muted">Real-time monitoring of VPN slot availability and system status</p>
             </div>
-            <button class="btn-secondary-custom" onclick="window.location.reload()">
-                <i class="fas fa-sync me-2"></i>Refresh Data
-            </button>
+            <div class="d-flex gap-2">
+                <button class="btn-secondary-custom" onclick="forceCleanup()">
+                    <i class="fas fa-broom me-2"></i>Force Cleanup
+                </button>
+                <button class="btn-secondary-custom" onclick="window.location.reload()">
+                    <i class="fas fa-sync me-2"></i>Refresh Data
+                </button>
+            </div>
         </div>
         
         <!-- Overview Cards -->
@@ -103,6 +108,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th class="px-4 py-3">Slot ID</th>
+                                <th class="px-4 py-3">Order Number</th>
                                 <th class="px-4 py-3">Status</th>
                                 <th class="px-4 py-3">Assigned</th>
                                 <th class="px-4 py-3">Expires</th>
@@ -114,6 +120,13 @@
                             <tr>
                                 <td class="px-4 py-3">
                                     <code class="bg-light p-2 rounded">{{ slot_id }}</code>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if slot_data.get('order_number') %}
+                                        <code class="bg-warning text-dark p-1 rounded">{{ slot_data.order_number }}</code>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
                                 </td>
                                 <td class="px-4 py-3">
                                     {% if slot_data.available %}
@@ -172,6 +185,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th class="px-4 py-3">Slot ID</th>
+                                <th class="px-4 py-3">Order Number</th>
                                 <th class="px-4 py-3">Status</th>
                                 <th class="px-4 py-3">Assigned</th>
                                 <th class="px-4 py-3">Expires</th>
@@ -183,6 +197,13 @@
                             <tr>
                                 <td class="px-4 py-3">
                                     <code class="bg-light p-2 rounded">{{ slot_id }}</code>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if slot_data.get('order_number') %}
+                                        <code class="bg-info text-white p-1 rounded">{{ slot_data.order_number }}</code>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
                                 </td>
                                 <td class="px-4 py-3">
                                     {% if slot_data.available %}
@@ -264,10 +285,62 @@
 
 {% block scripts %}
 <script>
-    function releaseSlot(slotType, slotId) {
+    // Admin key for API calls
+    const ADMIN_KEY = 'tunnelgrain_admin_secret_2024_xyz';
+    
+    async function releaseSlot(slotType, slotId) {
         if (confirm(`Are you sure you want to release ${slotId}?\n\nThis will immediately disconnect the user and make the slot available for others.`)) {
-            // In a production app, this would make an API call to release the slot
-            showNotification('warning', 'Manual Release', `Slot ${slotId} would be released manually. (Demo mode - not implemented)`);
+            try {
+                showNotification('info', 'Processing', 'Releasing slot...');
+                
+                const response = await fetch('/api/force-cleanup', {
+                    method: 'POST',
+                    headers: {
+                        'X-Admin-Key': ADMIN_KEY,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showNotification('success', 'Cleanup Complete', `Expired slots have been released. Cleaned: ${data.cleaned_slots ? data.cleaned_slots.length : 0} slots.`);
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const errorText = await response.text();
+                    showNotification('error', 'Error', `Failed to release slots: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Release slot error:', error);
+                showNotification('error', 'Connection Error', 'Failed to connect to server.');
+            }
+        }
+    }
+    
+    async function forceCleanup() {
+        if (confirm('Force cleanup all expired slots?\n\nThis will release all expired VPN connections.')) {
+            try {
+                showNotification('info', 'Processing', 'Cleaning up expired slots...');
+                
+                const response = await fetch('/api/force-cleanup', {
+                    method: 'POST',
+                    headers: {
+                        'X-Admin-Key': ADMIN_KEY,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const cleanedCount = (data.cleaned_monthly || 0) + (data.cleaned_test || 0);
+                    showNotification('success', 'Cleanup Complete', `Cleaned up ${cleanedCount} expired slots.`);
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showNotification('error', 'Error', `Cleanup failed: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Force cleanup error:', error);
+                showNotification('error', 'Connection Error', 'Failed to connect to server.');
+            }
         }
     }
     

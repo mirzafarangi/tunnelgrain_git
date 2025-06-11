@@ -26,6 +26,7 @@
                             <i class="fas fa-shield-alt text-success me-3" style="font-size: 1.5rem;"></i>
                             <div>
                                 <h5 class="fw-bold mb-1">VPN Account: {{ slot_id }}</h5>
+                                <div class="mb-1"><strong>Order Number:</strong> <code>{{ order_number }}</code></div>
                                 <small class="text-muted">Active for 30 days from today</small>
                             </div>
                         </div>
@@ -49,7 +50,7 @@
                     <div class="text-center">
                         <small class="text-muted">
                             <i class="fas fa-info-circle me-1"></i>
-                            Save your files securely - you can re-download them anytime
+                            Save your order number: <strong>{{ order_number }}</strong> - use it to check your VPN status
                         </small>
                     </div>
                 </div>
@@ -225,7 +226,7 @@
                                 <li class="mb-1">• 30 days of unlimited VPN access</li>
                                 <li class="mb-1">• Config files work on multiple devices</li>
                                 <li class="mb-1">• Technical support via email</li>
-                                <li class="mb-1">• Re-download access for 48 hours</li>
+                                <li class="mb-1">• Order tracking with: <code>{{ order_number }}</code></li>
                             </ul>
                         </div>
                         
@@ -244,7 +245,7 @@
                         <small class="text-muted">
                             <i class="fas fa-clock me-2"></i>
                             <strong>Access Duration:</strong> Your VPN access expires exactly 30 days from today. 
-                            You'll need to purchase a new subscription for continued service.
+                            Use order number <strong>{{ order_number }}</strong> to check status anytime.
                         </small>
                     </div>
                 </div>
@@ -271,9 +272,9 @@
                             <i class="fas fa-envelope me-2"></i>
                             Contact Support
                         </a>
-                        <a href="{{ url_for('home') }}" class="btn-secondary-custom">
-                            <i class="fas fa-home me-2"></i>
-                            Back to Home
+                        <a href="{{ url_for('order_lookup') }}" class="btn-secondary-custom">
+                            <i class="fas fa-search me-2"></i>
+                            Check Order Status
                         </a>
                     </div>
                 </div>
