@@ -9,6 +9,7 @@ import stripe
 import uuid
 import hashlib
 from functools import wraps
+from collections import defaultdict
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
@@ -26,6 +27,10 @@ MONTHLY_DIR = 'data/monthly'
 TEST_DIR = 'data/test'
 QR_DIR = 'static/qr_codes'
 SLOTS_FILE = 'slots.json'
+
+# Abuse Prevention - In-memory tracking (for production, use Redis or database)
+test_usage_tracker = defaultdict(list)
+ip_usage_tracker = defaultdict(list)
 
 # Admin authentication decorator
 def admin_required(f):
@@ -46,6 +51,41 @@ def generate_order_number():
 def hash_email(email):
     """Create hash of email for privacy"""
     return hashlib.sha256(email.encode()).hexdigest()[:12]
+
+# Abuse Prevention Functions
+def get_client_fingerprint(request):
+    """Create a privacy-respecting fingerprint"""
+    # Use IP + User-Agent hash for basic tracking
+    ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+    user_agent = request.headers.get('User-Agent', '')
+    
+    # Hash to protect privacy
+    fingerprint_data = f"{ip}:{user_agent}"
+    return hashlib.sha256(fingerprint_data.encode()).hexdigest()[:16]
+
+def check_test_vpn_abuse(request):
+    """Check if user has exceeded test VPN limits"""
+    fingerprint = get_client_fingerprint(request)
+    now = datetime.now()
+    
+    # Clean old entries (older than 24 hours)
+    cutoff_time = now - timedelta(hours=24)
+    test_usage_tracker[fingerprint] = [
+        timestamp for timestamp in test_usage_tracker[fingerprint] 
+        if timestamp > cutoff_time
+    ]
+    
+    # Check limits
+    usage_count = len(test_usage_tracker[fingerprint])
+    
+    # Limits: 3 test VPNs per 24 hours per fingerprint
+    if usage_count >= 3:
+        return False, f"Test limit reached. You can try {3 - usage_count} more test VPNs today."
+    
+    # Record this usage
+    test_usage_tracker[fingerprint].append(now)
+    
+    return True, f"Test VPN granted. {3 - len(test_usage_tracker[fingerprint])} remaining today."
 
 # Enhanced Slot management
 class SlotManager:
@@ -186,8 +226,16 @@ def order_lookup():
 # VPN service routes
 @app.route('/get-test-vpn', methods=['POST'])
 def get_test_vpn():
-    """Assign a 15-minute test VPN"""
+    """Assign a 15-minute test VPN with abuse prevention"""
     slot_manager.cleanup_expired_slots()
+    
+    # Check for abuse
+    allowed, message = check_test_vpn_abuse(request)
+    if not allowed:
+        return jsonify({
+            'error': 'Test limit exceeded. You can try 3 test VPNs per day. For unlimited access, please purchase a monthly VPN.',
+            'limit_info': message
+        }), 429
     
     result = slot_manager.assign_slot('test')
     if not result:
@@ -200,12 +248,17 @@ def get_test_vpn():
     session['test_order'] = order_number
     session['test_expires'] = (datetime.now() + timedelta(minutes=15)).isoformat()
     
+    # Log usage for monitoring
+    fingerprint = get_client_fingerprint(request)
+    print(f"[TEST] User {fingerprint[:8]} assigned {slot_id}, order: {order_number}")
+    
     return jsonify({
         'success': True,
         'slot_id': slot_id,
         'order_number': order_number,
         'expires_in_minutes': 15,
-        'download_url': url_for('download_test_config')
+        'download_url': url_for('download_test_config'),
+        'usage_info': message
     })
 
 @app.route('/download-test-config')
@@ -459,6 +512,40 @@ def force_cleanup():
         'cleaned_monthly': before_cleanup['monthly'] - after_cleanup['monthly'],
         'cleaned_test': before_cleanup['test'] - after_cleanup['test'],
         'cleaned_slots': cleaned_slots
+    })
+
+# Abuse statistics endpoint
+@app.route('/api/abuse-stats')
+@admin_required
+def abuse_stats():
+    """Show test VPN abuse statistics"""
+    now = datetime.now()
+    cutoff_24h = now - timedelta(hours=24)
+    cutoff_1h = now - timedelta(hours=1)
+    
+    # Clean old data
+    active_users_24h = 0
+    active_users_1h = 0
+    total_requests_24h = 0
+    
+    for fingerprint, timestamps in test_usage_tracker.items():
+        # Clean old entries
+        recent_timestamps = [t for t in timestamps if t > cutoff_24h]
+        test_usage_tracker[fingerprint] = recent_timestamps
+        
+        if recent_timestamps:
+            active_users_24h += 1
+            total_requests_24h += len(recent_timestamps)
+            
+            if any(t > cutoff_1h for t in recent_timestamps):
+                active_users_1h += 1
+    
+    return jsonify({
+        'active_users_24h': active_users_24h,
+        'active_users_1h': active_users_1h,
+        'total_requests_24h': total_requests_24h,
+        'unique_fingerprints': len([f for f, t in test_usage_tracker.items() if t]),
+        'timestamp': now.isoformat()
     })
 
 if __name__ == '__main__':
