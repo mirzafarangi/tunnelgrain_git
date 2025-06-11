@@ -15,8 +15,8 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
 
 # Configuration
-STRIPE_PUBLISHABLE_KEY = 'pk_live_51RYReqCaYnJXNs8zKtZk9lQzn8ZCzKU5AzT3ZxZLwOypTEFst36TGxsv3UgCZqG9y6wGtLgaf450sNSL7xZQSlu000ygmqfy6I'
-STRIPE_SECRET_KEY = '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'
+STRIPE_PUBLISHABLE_KEY = 'pk_test_51RYReqCaYnJXNs8zB2jfDn9rtFbLPbsBq8jTTk6Emd35rAWS2Day8r3lf7h4sTVY8q6tpDSZi48Eun82bgnQnEzy002KTbJdLE'
+STRIPE_SECRET_KEY = 'sk_test_51RYReqCaYnJXNs8zU5CjyDM7yLagaQMRHbOkXdZnbZ4gUoz2JyEEt7JkDSXqkdFieRFX3EYCKmtpJiTyZ6SQpEet00WX5WINZX'
 stripe.api_key = STRIPE_SECRET_KEY
 
 # Admin security key (set as environment variable in production)
