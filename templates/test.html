@@ -1,36 +1,64 @@
 {% extends "base.html" %}
 
-{% block title %}15-Minute Test - Tunnelgrain{% endblock %}
+{% block title %}Free VPN Test - Tunnelgrain{% endblock %}
 
 {% block content %}
-<div class="content-wrapper">
-    <h1 class="page-title">Test Our VPN Service</h1>
-    <p class="page-subtitle">
-        Try Tunnelgrain for 15 minutes before purchasing. 
-        No registration required, no payment information needed.
-    </p>
-    
-    <div class="row justify-content-center">
-        <div class="col-lg-6">
-            <div class="card-clean p-4 mb-4">
-                <div class="text-center mb-4">
-                    <h3 class="h5 mb-3">15-Minute Test Access</h3>
-                    <p class="text-muted">
-                        Test our WireGuard VPN service to verify compatibility 
-                        and performance before making a purchase.
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content text-center">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold mb-4">
+                        Test Our VPN Service
+                        <span class="d-block text-warning">15 Minutes • Completely Free</span>
+                    </h1>
+                    <p class="lead mb-4 opacity-90">
+                        Experience the full power of our WireGuard VPN before making a purchase. 
+                        No registration required, no payment information needed.
                     </p>
+                    
+                    <div class="mb-4">
+                        <div id="test-status">
+                            <div class="status-indicator status-online">
+                                <span class="status-dot online"></span>
+                                Loading test slot availability...
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark mb-3">What's Included</h6>
-                    <ul class="feature-list">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Test VPN Section -->
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="card-pricing p-4 position-relative">
+                    <div class="pricing-badge">Free Trial</div>
+                    
+                    <div class="text-center mb-4">
+                        <div class="mb-3">
+                            <i class="fas fa-flask text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-3">15-Minute Demo Access</h3>
+                        <p class="text-muted">
+                            Full-featured VPN access to test compatibility, speed, and performance 
+                            across all your devices before making a purchase decision.
+                        </p>
+                    </div>
+                    
+                    <ul class="feature-list mb-4">
                         <li>
                             <i class="fas fa-check"></i>
-                            Full-speed WireGuard connection
+                            Complete WireGuard protection
                         </li>
                         <li>
                             <i class="fas fa-check"></i>
-                            Config file and QR code
+                            Full-speed server access
                         </li>
                         <li>
                             <i class="fas fa-check"></i>
@@ -38,124 +66,216 @@
                         </li>
                         <li>
                             <i class="fas fa-check"></i>
-                            Complete privacy protection
+                            Config file + QR code
+                        </li>
+                        <li>
+                            <i class="fas fa-check"></i>
+                            Zero registration required
                         </li>
                     </ul>
+                    
+                    <button id="getTestBtn" class="btn-primary-custom btn-lg w-100 mb-3" onclick="getTestVPN()">
+                        <i class="fas fa-download me-2"></i>
+                        Get Your Free Test VPN
+                    </button>
+                    
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt me-1"></i>
+                            Instant access • No spam • Secure connection
+                        </small>
+                    </div>
                 </div>
-                
-                <div class="text-center mb-3">
-                    <small id="test-status" class="text-muted">
-                        <span class="status-dot status-online"></span>
-                        Loading test slot availability...
-                    </small>
-                </div>
-                
-                <button id="getTestBtn" class="btn-primary-clean w-100" onclick="getTestVPN()">
-                    Get 15-Minute Test VPN
-                </button>
                 
                 <div id="testResult" class="mt-4" style="display: none;">
-                    <div class="card-clean p-3" style="background-color: var(--secondary-bg);">
+                    <div class="card-modern p-4">
                         <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <strong>Test VPN Ready</strong>
+                            <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                 style="width: 40px; height: 40px;">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-1">Test VPN Ready!</h5>
+                                <small class="text-muted">Your 15-minute trial is now active</small>
+                            </div>
                         </div>
-                        <p class="mb-3 small">Your 15-minute test VPN is ready. Download the files below:</p>
                         
-                        <div class="row g-2 mb-3">
+                        <p class="mb-3">Download your configuration files below and connect immediately:</p>
+                        
+                        <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <a href="/download-test-config" class="btn-secondary-clean w-100 text-center small">
-                                    <i class="fas fa-file-alt me-1"></i>
+                                <a href="/download-test-config" class="btn-secondary-custom w-100 text-center">
+                                    <i class="fas fa-file-alt me-2"></i>
                                     Config File
                                 </a>
                             </div>
                             <div class="col-6">
-                                <a href="/download-test-qr" class="btn-secondary-clean w-100 text-center small">
-                                    <i class="fas fa-qrcode me-1"></i>
+                                <a href="/download-test-qr" class="btn-secondary-custom w-100 text-center">
+                                    <i class="fas fa-qrcode me-2"></i>
                                     QR Code
                                 </a>
                             </div>
                         </div>
                         
-                        <div class="text-center">
-                            <small class="text-muted">
+                        <div class="bg-light rounded p-3 text-center">
+                            <div class="fw-bold text-primary mb-1">
                                 <i class="fas fa-clock me-1"></i>
-                                Expires in: <span id="countdown">15:00</span>
+                                Time remaining: <span id="countdown">15:00</span>
+                            </div>
+                            <small class="text-muted">
+                                VPN automatically expires for security
                             </small>
                         </div>
                     </div>
                 </div>
                 
                 <div class="text-center mt-4">
-                    <small class="text-muted">
-                        Ready to purchase? 
-                        <a href="{{ url_for('home') }}" class="text-dark">Get monthly access</a>
-                    </small>
+                    <p class="text-muted mb-2">Ready for unlimited access?</p>
+                    <a href="{{ url_for('home') }}" class="btn-outline-custom">
+                        <i class="fas fa-arrow-right me-2"></i>
+                        Purchase Monthly VPN
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Setup Instructions -->
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <div class="card-clean p-4">
-                <h3 class="h5 mb-4 text-center">Setup Instructions</h3>
-                
-                <div class="row">
-                    <div class="col-md-6 mb-4">
-                        <h6 class="text-dark mb-3">
-                            <i class="fas fa-mobile-alt me-2"></i>
-                            Mobile Setup
-                        </h6>
-                        <ol class="small list-unstyled">
-                            <li class="mb-2">
-                                <strong>1.</strong> Install WireGuard from app store
-                            </li>
-                            <li class="mb-2">
-                                <strong>2.</strong> Open app and tap "Add Tunnel"
-                            </li>
-                            <li class="mb-2">
-                                <strong>3.</strong> Scan QR code or import config file
-                            </li>
-                            <li class="mb-2">
-                                <strong>4.</strong> Toggle connection ON
-                            </li>
-                        </ol>
+</section>
+
+<!-- Setup Instructions -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Quick Setup Guide</h2>
+            <p class="section-subtitle">Get connected in under 2 minutes on any device</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card-modern p-4 h-100">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-mobile-alt text-primary me-3" style="font-size: 2rem;"></i>
+                        <h5 class="fw-bold mb-0">Mobile Setup (iOS/Android)</h5>
                     </div>
                     
-                    <div class="col-md-6 mb-4">
-                        <h6 class="text-dark mb-3">
-                            <i class="fas fa-desktop me-2"></i>
-                            Desktop Setup
-                        </h6>
-                        <ol class="small list-unstyled">
-                            <li class="mb-2">
-                                <strong>1.</strong> Download WireGuard from wireguard.com
-                            </li>
-                            <li class="mb-2">
-                                <strong>2.</strong> Install and open WireGuard client
-                            </li>
-                            <li class="mb-2">
-                                <strong>3.</strong> Click "Add Tunnel" and select config file
-                            </li>
-                            <li class="mb-2">
-                                <strong>4.</strong> Click "Activate" to connect
-                            </li>
-                        </ol>
+                    <div class="step-list">
+                        <div class="d-flex mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                 style="width: 30px; height: 30px; font-size: 0.875rem; font-weight: bold;">
+                                1
+                            </div>
+                            <div>
+                                <strong>Download WireGuard</strong><br>
+                                <small class="text-muted">Install the official WireGuard app from your app store</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                 style="width: 30px; height: 30px; font-size: 0.875rem; font-weight: bold;">
+                                2
+                            </div>
+                            <div>
+                                <strong>Add Tunnel</strong><br>
+                                <small class="text-muted">Tap "+" then "Scan from QR Code" or "Create from file"</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                 style="width: 30px; height: 30px; font-size: 0.875rem; font-weight: bold;">
+                                3
+                            </div>
+                            <div>
+                                <strong>Import Config</strong><br>
+                                <small class="text-muted">Scan the QR code or select the downloaded .conf file</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex">
+                            <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                 style="width: 30px; height: 30px; font-size: 0.875rem; font-weight: bold;">
+                                ✓
+                            </div>
+                            <div>
+                                <strong>Connect</strong><br>
+                                <small class="text-muted">Toggle the connection ON and enjoy secure browsing</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="text-center mt-3">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Test VPN automatically expires after 15 minutes for security
-                    </small>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="card-modern p-4 h-100">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-desktop text-primary me-3" style="font-size: 2rem;"></i>
+                        <h5 class="fw-bold mb-0">Desktop Setup (Windows/Mac/Linux)</h5>
+                    </div>
+                    
+                    <div class="step-list">
+                        <div class="d-flex mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                 style="width: 30px; height: 30px; font-size: 0.875rem; font-weight: bold;">
+                                1
+                            </div>
+                            <div>
+                                <strong>Download WireGuard</strong><br>
+                                <small class="text-muted">Get the official client from <a href="https://www.wireguard.com/install/" target="_blank" class="text-primary">wireguard.com</a></small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                 style="width: 30px; height: 30px; font-size: 0.875rem; font-weight: bold;">
+                                2
+                            </div>
+                            <div>
+                                <strong>Add Tunnel</strong><br>
+                                <small class="text-muted">Click "Add Tunnel" → "Add tunnel from file"</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex mb-3">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                 style="width: 30px; height: 30px; font-size: 0.875rem; font-weight: bold;">
+                                3
+                            </div>
+                            <div>
+                                <strong>Select Config</strong><br>
+                                <small class="text-muted">Choose your downloaded tunnelgrain_test_XX.conf file</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex">
+                            <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                 style="width: 30px; height: 30px; font-size: 0.875rem; font-weight: bold;">
+                                ✓
+                            </div>
+                            <div>
+                                <strong>Activate</strong><br>
+                                <small class="text-muted">Click "Activate" to establish secure connection</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+        
+        <div class="text-center mt-5">
+            <div class="card-modern p-4 d-inline-block">
+                <h6 class="fw-bold mb-2">
+                    <i class="fas fa-question-circle text-primary me-2"></i>
+                    Need Help?
+                </h6>
+                <p class="text-muted mb-3">Our technical support team is ready to assist you</p>
+                <a href="{{ url_for('contact') }}" class="btn-secondary-custom">
+                    <i class="fas fa-headset me-2"></i>
+                    Contact Support
+                </a>
+            </div>
+        </div>
     </div>
-</div>
+</section>
 {% endblock %}
 
 {% block scripts %}
@@ -165,8 +285,10 @@
     
     async function getTestVPN() {
         const btn = document.getElementById('getTestBtn');
+        const originalText = btn.innerHTML;
+        
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Getting Test VPN...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Preparing Your Test VPN...';
         
         try {
             const response = await fetch('/get-test-vpn', {
@@ -179,25 +301,33 @@
             const data = await response.json();
             
             if (data.error) {
-                alert('Error: ' + data.error);
+                // Show professional error notification
+                showNotification('error', 'Service Unavailable', data.error);
                 btn.disabled = false;
-                btn.innerHTML = 'Get 15-Minute Test VPN';
+                btn.innerHTML = originalText;
                 return;
             }
             
-            // Show download section
+            // Show success and download section
+            showNotification('success', 'Test VPN Ready!', 'Your 15-minute trial is now active. Download your configuration files below.');
             document.getElementById('testResult').style.display = 'block';
             btn.style.display = 'none';
             
             // Start countdown
-            expiresAt = new Date(Date.now() + (15 * 60 * 1000)); // 15 minutes from now
+            expiresAt = new Date(Date.now() + (15 * 60 * 1000));
             startCountdown();
+            
+            // Scroll to result
+            document.getElementById('testResult').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
             
         } catch (error) {
             console.error('Error:', error);
-            alert('Error getting test VPN. Please try again.');
+            showNotification('error', 'Connection Error', 'Please check your internet connection and try again.');
             btn.disabled = false;
-            btn.innerHTML = 'Get 15-Minute Test VPN';
+            btn.innerHTML = originalText;
         }
     }
     
@@ -209,20 +339,81 @@
             if (timeLeft <= 0) {
                 clearInterval(countdownTimer);
                 document.getElementById('countdown').textContent = 'EXPIRED';
+                
+                // Show expiration notice
                 document.getElementById('testResult').innerHTML = `
-                    <div class="card-clean p-3" style="background-color: var(--tertiary-bg);">
-                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
-                        Your test VPN has expired. Get a new one or purchase monthly access.
+                    <div class="card-modern p-4 text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-clock text-warning" style="font-size: 3rem;"></i>
+                        </div>
+                        <h5 class="fw-bold mb-3">Test Period Expired</h5>
+                        <p class="text-muted mb-4">
+                            Your 15-minute test has ended. Ready for unlimited access?
+                        </p>
+                        <a href="${"{{ url_for('home') }}"}" class="btn-primary-custom">
+                            <i class="fas fa-credit-card me-2"></i>
+                            Purchase Monthly VPN
+                        </a>
                     </div>
                 `;
-                setTimeout(() => location.reload(), 3000);
+                
+                showNotification('info', 'Test Expired', 'Your 15-minute trial has ended. Purchase monthly access for unlimited use.');
                 return;
             }
             
             const minutes = Math.floor(timeLeft / 60000);
             const seconds = Math.floor((timeLeft % 60000) / 1000);
             document.getElementById('countdown').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Warning at 2 minutes
+            if (timeLeft <= 120000 && timeLeft > 119000) {
+                showNotification('warning', 'Time Running Out', 'Your test VPN will expire in 2 minutes.');
+            }
         }, 1000);
+    }
+    
+    function showNotification(type, title, message) {
+        const alertTypes = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        };
+        
+        const icons = {
+            'success': 'fas fa-check-circle',
+            'error': 'fas fa-times-circle',
+            'warning': 'fas fa-exclamation-triangle',
+            'info': 'fas fa-info-circle'
+        };
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert ${alertTypes[type]} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 100px; right: 20px; z-index: 9999; max-width: 400px; box-shadow: 0 8px 25px rgba(0,0,0,0.15);';
+        alertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="${icons[type]} me-2"></i>
+                <div>
+                    <strong>${title}</strong><br>
+                    <small>${message}</small>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.classList.remove('show');
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.parentNode.removeChild(alertDiv);
+                    }
+                }, 150);
+            }
+        }, 5000);
     }
 </script>
 {% endblock %}

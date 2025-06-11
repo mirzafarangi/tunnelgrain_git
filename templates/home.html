@@ -1,179 +1,231 @@
 {% extends "base.html" %}
 
-{% block title %}Tunnelgrain - Private VPN Service{% endblock %}
+{% block title %}Tunnelgrain - Professional VPN Service{% endblock %}
 
 {% block content %}
-<div class="content-wrapper">
-    <!-- Hero Section -->
-    <section class="text-center mb-5">
-        <h1 class="page-title">Private VPN Access</h1>
-        <p class="page-subtitle">
-            WireGuard-based VPN service for privacy-conscious users. 
-            Test our service for 15 minutes, then purchase monthly access.
-        </p>
-        
-        <div class="row justify-content-center mb-4">
-            <div class="col-md-8">
-                <div class="d-flex gap-3 justify-content-center flex-wrap">
-                    <button class="btn-primary-clean" onclick="purchaseVPN()">
-                        Purchase Monthly Access - $9.99
-                    </button>
-                    <a href="{{ url_for('test') }}" class="btn-secondary-clean">
-                        Try 15-Minute Test
-                    </a>
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content text-center">
+            <div class="row align-items-center">
+                <div class="col-lg-8 mx-auto">
+                    <h1 class="display-4 fw-bold mb-4">
+                        Professional VPN Access
+                        <span class="d-block text-warning">Starting at $9.99</span>
+                    </h1>
+                    <p class="lead mb-5 opacity-90">
+                        Enterprise-grade WireGuard VPN service for individuals who value privacy and performance. 
+                        Secure your connection with military-grade encryption and blazing-fast speeds.
+                    </p>
+                    
+                    <div class="d-flex gap-3 justify-content-center flex-wrap mb-4">
+                        <button class="btn-primary-custom btn-lg" onclick="purchaseVPN()">
+                            <i class="fas fa-credit-card me-2"></i>
+                            Get Monthly Access - $9.99
+                        </button>
+                        <a href="{{ url_for('test') }}" class="btn-outline-custom btn-lg">
+                            <i class="fas fa-flask me-2"></i>
+                            Try 15-Minute Demo
+                        </a>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-md-6 mb-2">
+                            <div id="monthly-status">
+                                <div class="status-indicator status-online">
+                                    <span class="status-dot online"></span>
+                                    Loading monthly slots...
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <div id="test-status">
+                                <div class="status-indicator status-online">
+                                    <span class="status-dot online"></span>
+                                    Loading test slots...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Why Choose Tunnelgrain?</h2>
+            <p class="section-subtitle">Professional-grade VPN infrastructure designed for privacy and performance</p>
+        </div>
         
-        <div class="row text-center">
-            <div class="col-md-6 mb-2">
-                <small id="monthly-status" class="text-muted">
-                    <span class="status-dot status-online"></span>
-                    Loading monthly slots...
-                </small>
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6">
+                <div class="card-modern p-4 h-100 text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-shield-alt text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Military-Grade Security</h5>
+                    <p class="text-muted">
+                        Advanced WireGuard protocol with AES-256 encryption. 
+                        Your data is protected with the same technology used by governments and enterprises.
+                    </p>
+                </div>
             </div>
-            <div class="col-md-6 mb-2">
-                <small id="test-status" class="text-muted">
-                    <span class="status-dot status-online"></span>
-                    Loading test slots...
-                </small>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card-modern p-4 h-100 text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-bolt text-warning" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Lightning Performance</h5>
+                    <p class="text-muted">
+                        High-performance servers optimized for speed. Stream, game, and browse 
+                        without slowdowns or buffering interruptions.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card-modern p-4 h-100 text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-eye-slash text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Zero-Log Policy</h5>
+                    <p class="text-muted">
+                        We don't track, store, or monitor your online activity. 
+                        Complete anonymity and privacy guaranteed by design.
+                    </p>
+                </div>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Service Details -->
-    <section class="mb-5">
-        <div class="row">
-            <div class="col-lg-6 mb-4">
-                <div class="card-clean p-4 h-100">
-                    <h3 class="h5 mb-3">What You Get</h3>
-                    <ul class="feature-list">
+<!-- Pricing Section -->
+<section class="section-padding">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Simple, Transparent Pricing</h2>
+            <p class="section-subtitle">No hidden fees, no automatic renewals, no complexity</p>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-5 col-md-8">
+                <div class="card-pricing p-4 text-center position-relative">
+                    <div class="pricing-badge">Most Popular</div>
+                    
+                    <div class="mb-4">
+                        <h3 class="h4 fw-bold mb-3 text-primary">Monthly VPN Access</h3>
+                        <div class="mb-3">
+                            <span class="display-4 fw-bold text-dark">$9.99</span>
+                            <span class="text-muted fs-5">/month</span>
+                        </div>
+                        <p class="text-muted">
+                            One-time payment for 30 days of unlimited VPN access. 
+                            No subscriptions, no auto-renewal.
+                        </p>
+                    </div>
+                    
+                    <ul class="feature-list mb-4">
                         <li>
-                            <i class="fas fa-shield-alt"></i>
+                            <i class="fas fa-check"></i>
+                            30 days of unlimited access
+                        </li>
+                        <li>
+                            <i class="fas fa-check"></i>
                             WireGuard protocol encryption
                         </li>
                         <li>
-                            <i class="fas fa-clock"></i>
-                            30-day access period
-                        </li>
-                        <li>
-                            <i class="fas fa-server"></i>
-                            High-speed server access
-                        </li>
-                        <li>
-                            <i class="fas fa-mobile-alt"></i>
+                            <i class="fas fa-check"></i>
                             Works on all devices
                         </li>
                         <li>
-                            <i class="fas fa-eye-slash"></i>
+                            <i class="fas fa-check"></i>
+                            High-speed server access
+                        </li>
+                        <li>
+                            <i class="fas fa-check"></i>
                             No activity logging
                         </li>
+                        <li>
+                            <i class="fas fa-check"></i>
+                            Technical support included
+                        </li>
                     </ul>
-                </div>
-            </div>
-            
-            <div class="col-lg-6 mb-4">
-                <div class="card-clean p-4 h-100">
-                    <h3 class="h5 mb-3">How It Works</h3>
-                    <ol class="list-unstyled">
-                        <li class="mb-3">
-                            <strong>1. Test First</strong><br>
-                            <small class="text-muted">Try our 15-minute test to verify compatibility</small>
-                        </li>
-                        <li class="mb-3">
-                            <strong>2. Purchase</strong><br>
-                            <small class="text-muted">Secure payment via Stripe for monthly access</small>
-                        </li>
-                        <li class="mb-3">
-                            <strong>3. Download</strong><br>
-                            <small class="text-muted">Get your WireGuard config file instantly</small>
-                        </li>
-                        <li class="mb-3">
-                            <strong>4. Connect</strong><br>
-                            <small class="text-muted">Import to WireGuard app and start browsing</small>
-                        </li>
-                    </ol>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Pricing -->
-    <section class="mb-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-6">
-                <div class="card-clean p-4 text-center">
-                    <h3 class="h4 mb-3">Monthly VPN Access</h3>
-                    <div class="mb-3">
-                        <span class="h2 text-dark">$9.99</span>
-                        <span class="text-muted">/month</span>
-                    </div>
-                    <p class="text-muted mb-4">
-                        One-time payment for 30 days of VPN access. 
-                        No recurring billing, no automatic renewals.
-                    </p>
-                    <button class="btn-primary-clean w-100" onclick="purchaseVPN()">
-                        Purchase Now
+                    
+                    <button class="btn-primary-custom btn-lg w-100 mb-3" onclick="purchaseVPN()">
+                        <i class="fas fa-lock me-2"></i>
+                        Secure Purchase
                     </button>
-                    <small class="text-muted d-block mt-2">
-                        Secure payment processing via Stripe
-                    </small>
+                    
+                    <div class="d-flex justify-content-center align-items-center text-muted">
+                        <i class="fab fa-cc-stripe me-2"></i>
+                        <small>Secured by Stripe</small>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Important Notes -->
-    <section class="mb-5">
-        <div class="card-clean p-4">
-            <h3 class="h5 mb-3">Service Notes</h3>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <h6 class="text-muted">Limited Slots</h6>
-                    <p class="small">We maintain only 10 active VPN slots to ensure optimal performance for all users.</p>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <h6 class="text-muted">No Refunds</h6>
-                    <p class="small">Test our service first with the 15-minute trial. Sales are final except for technical failures.</p>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <h6 class="text-muted">Technical Support</h6>
-                    <p class="small">Contact us for setup assistance or technical issues via our support channels.</p>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <h6 class="text-muted">Fair Usage</h6>
-                    <p class="small">Service is provided for legitimate personal use. Abuse may result in service termination.</p>
+<!-- How It Works Section -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Get Connected in Minutes</h2>
+            <p class="section-subtitle">Simple setup process for all your devices</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                            1
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-3">Test First</h5>
+                    <p class="text-muted mb-0">
+                        Try our 15-minute demo to verify compatibility and performance before purchasing.
+                    </p>
                 </div>
             </div>
-        </div>
-    </section>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    async function purchaseVPN() {
-        try {
-            const response = await fetch('/create-checkout-session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
             
-            const data = await response.json();
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                            2
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-3">Secure Payment</h5>
+                    <p class="text-muted mb-0">
+                        Complete your purchase with our secure Stripe checkout. Your payment is protected.
+                    </p>
+                </div>
+            </div>
             
-            if (data.error) {
-                alert('Error: ' + data.error);
-                return;
-            }
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                            3
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-3">Download Config</h5>
+                    <p class="text-muted mb-0">
+                        Instantly receive your WireGuard configuration file and QR code for easy setup.
+                    </p>
+                </div>
+            </div>
             
-            window.location.href = data.checkout_url;
-            
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error creating checkout session. Please try again.');
-        }
-    }
-</script>
-{% endblock %}
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <div

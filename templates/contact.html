@@ -1,143 +1,283 @@
 {% extends "base.html" %}
 
-{% block title %}Contact - Tunnelgrain{% endblock %}
+{% block title %}Contact Support - Tunnelgrain{% endblock %}
 
 {% block content %}
-<div class="content-wrapper">
-    <h1 class="page-title">Contact Support</h1>
-    <p class="page-subtitle">
-        Technical assistance and service inquiries
-    </p>
-    
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <!-- Contact Methods -->
-            <div class="row mb-5">
-                <div class="col-md-6 mb-4">
-                    <div class="card-clean p-4 h-100 text-center">
-                        <i class="fas fa-envelope text-muted mb-3" style="font-size: 2rem;"></i>
-                        <h5 class="mb-3">Email Support</h5>
-                        <p class="text-muted mb-3 small">
-                            For technical issues, account problems, or general inquiries
-                        </p>
-                        <a href="mailto:support@tunnelgrain.com" class="btn-primary-clean">
-                            support@tunnelgrain.com
-                        </a>
-                    </div>
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content text-center">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold mb-4">
+                        Technical Support
+                        <span class="d-block text-warning">We're Here to Help</span>
+                    </h1>
+                    <p class="lead mb-4 opacity-90">
+                        Get expert assistance with VPN setup, troubleshooting, and technical issues. 
+                        Our support team is ready to help you get connected securely.
+                    </p>
                 </div>
-                
-                <div class="col-md-6 mb-4">
-                    <div class="card-clean p-4 h-100 text-center">
-                        <i class="fas fa-clock text-muted mb-3" style="font-size: 2rem;"></i>
-                        <h5 class="mb-3">Response Time</h5>
-                        <p class="text-muted mb-3 small">
-                            Typical response within 24-48 hours
-                        </p>
-                        <div class="btn-secondary-clean">
-                            Best Effort Support
-                        </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact Methods -->
+<section class="section-padding">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Get in Touch</h2>
+            <p class="section-subtitle">Multiple ways to reach our technical support team</p>
+        </div>
+        
+        <div class="row g-4 mb-5">
+            <div class="col-lg-4 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-envelope text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Email Support</h5>
+                    <p class="text-muted mb-4">
+                        For technical issues, account problems, configuration help, 
+                        and general inquiries about our VPN service.
+                    </p>
+                    <a href="mailto:support@tunnelgrain.com" class="btn-primary-custom">
+                        <i class="fas fa-envelope me-2"></i>
+                        support@tunnelgrain.com
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-clock text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Response Time</h5>
+                    <p class="text-muted mb-4">
+                        We typically respond to support requests within 24-48 hours. 
+                        Priority is given to technical issues and urgent matters.
+                    </p>
+                    <div class="btn-secondary-custom">
+                        <i class="fas fa-clock me-2"></i>
+                        24-48 Hour Response
                     </div>
                 </div>
             </div>
             
-            <!-- Contact Form -->
-            <div class="card-clean p-4 mb-5">
-                <h3 class="h5 mb-4">Send a Message</h3>
-                
-                <form id="contactForm">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="email" class="form-label small text-muted">Email Address</label>
-                            <input type="email" class="form-control" id="email" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="subject" class="form-label small text-muted">Subject</label>
-                            <select class="form-control" id="subject" required>
-                                <option value="">Select a topic...</option>
-                                <option value="technical">Technical Support</option>
-                                <option value="connection">Connection Issues</option>
-                                <option value="config">Config File Problems</option>
-                                <option value="payment">Payment Questions</option>
-                                <option value="general">General Inquiry</option>
-                            </select>
-                        </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-tools text-warning" style="font-size: 3rem;"></i>
                     </div>
-                    
-                    <div class="mb-4">
-                        <label for="message" class="form-label small text-muted">Message</label>
-                        <textarea class="form-control" id="message" rows="5" 
-                                  placeholder="Please describe your issue in detail. Include any error messages and steps you've tried." required></textarea>
+                    <h5 class="fw-bold mb-3">Technical Assistance</h5>
+                    <p class="text-muted mb-4">
+                        Our team provides hands-on help with WireGuard setup, 
+                        connection troubleshooting, and configuration issues.
+                    </p>
+                    <div class="btn-secondary-custom">
+                        <i class="fas fa-tools me-2"></i>
+                        Expert Help Available
                     </div>
-                    
-                    <div class="text-center">
-                        <button type="submit" class="btn-primary-clean">
-                            Send Message
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
-            
-            <!-- Common Issues -->
-            <div class="card-clean p-4">
-                <h3 class="h5 mb-4">Common Issues</h3>
-                
+        </div>
+    </div>
+</section>
+
+<!-- Contact Form -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card-modern p-5">
+                    <div class="text-center mb-4">
+                        <h3 class="fw-bold mb-3">Send us a Message</h3>
+                        <p class="text-muted">
+                            Describe your issue in detail and we'll get back to you with a solution
+                        </p>
+                    </div>
+                    
+                    <form id="contactForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="email" class="form-label fw-bold">Email Address</label>
+                                <input type="email" class="form-control-modern" id="email" 
+                                       placeholder="your.email@example.com" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="subject" class="form-label fw-bold">Support Category</label>
+                                <select class="form-control-modern" id="subject" required>
+                                    <option value="">Choose your issue type...</option>
+                                    <option value="technical">Technical Support</option>
+                                    <option value="connection">Connection Problems</option>
+                                    <option value="config">Configuration Help</option>
+                                    <option value="payment">Payment Questions</option>
+                                    <option value="account">Account Issues</option>
+                                    <option value="general">General Inquiry</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="message" class="form-label fw-bold">Detailed Description</label>
+                            <textarea class="form-control-modern" id="message" rows="6" 
+                                      placeholder="Please describe your issue in detail. Include:
+• What you were trying to do
+• What happened instead
+• Any error messages you received
+• Steps you've already tried
+• Your device/operating system" required></textarea>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn-primary-custom btn-lg px-5">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                Send Support Request
+                            </button>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Your information is kept private and secure
+                            </small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="section-padding">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Common Issues & Solutions</h2>
+            <p class="section-subtitle">Quick answers to frequently asked questions</p>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
                 <div class="accordion" id="faqAccordion">
-                    <div class="mb-3">
-                        <h6 class="text-dark">
-                            <button class="btn btn-link p-0 text-dark text-decoration-none" type="button" 
-                                    data-bs-toggle="collapse" data-bs-target="#faq1">
-                                VPN not connecting on mobile
+                    <div class="card-modern mb-3">
+                        <div class="card-header p-0 border-0">
+                            <button class="btn btn-link w-100 text-start p-4 text-decoration-none" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">VPN not connecting on mobile devices</h6>
+                                    <i class="fas fa-chevron-down text-muted"></i>
+                                </div>
                             </button>
-                        </h6>
+                        </div>
                         <div id="faq1" class="collapse" data-bs-parent="#faqAccordion">
-                            <div class="small text-muted mt-2">
-                                Ensure you've downloaded the official WireGuard app and imported the correct config file. 
-                                Check your internet connection and try toggling the VPN off and on.
+                            <div class="card-body pt-0">
+                                <p class="text-muted mb-3">This is usually a configuration or app issue. Try these steps:</p>
+                                <ol class="text-muted">
+                                    <li>Ensure you've downloaded the official WireGuard app from your app store</li>
+                                    <li>Delete any old VPN configurations and import a fresh config file</li>
+                                    <li>Check that your device has a stable internet connection</li>
+                                    <li>Try toggling the VPN connection off and on</li>
+                                    <li>Restart the WireGuard app and try again</li>
+                                </ol>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="mb-3">
-                        <h6 class="text-dark">
-                            <button class="btn btn-link p-0 text-dark text-decoration-none" type="button" 
-                                    data-bs-toggle="collapse" data-bs-target="#faq2">
-                                Slow connection speeds
+                    <div class="card-modern mb-3">
+                        <div class="card-header p-0 border-0">
+                            <button class="btn btn-link w-100 text-start p-4 text-decoration-none collapsed" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">Slow connection speeds through VPN</h6>
+                                    <i class="fas fa-chevron-down text-muted"></i>
+                                </div>
                             </button>
-                        </h6>
+                        </div>
                         <div id="faq2" class="collapse" data-bs-parent="#faqAccordion">
-                            <div class="small text-muted mt-2">
-                                VPN speed depends on your location and ISP. Try disconnecting and reconnecting. 
-                                If issues persist, contact support with your location details.
+                            <div class="card-body pt-0">
+                                <p class="text-muted mb-3">VPN speed can be affected by several factors:</p>
+                                <ul class="text-muted">
+                                    <li><strong>Distance:</strong> Your physical distance from our server affects speed</li>
+                                    <li><strong>ISP throttling:</strong> Some ISPs may slow down VPN traffic</li>
+                                    <li><strong>Network congestion:</strong> Try connecting at different times</li>
+                                    <li><strong>Device performance:</strong> Older devices may process encryption slower</li>
+                                </ul>
+                                <p class="text-muted">If speeds are consistently very slow, contact support with your location details.</p>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="mb-3">
-                        <h6 class="text-dark">
-                            <button class="btn btn-link p-0 text-dark text-decoration-none" type="button" 
-                                    data-bs-toggle="collapse" data-bs-target="#faq3">
-                                Can't download config files
+                    <div class="card-modern mb-3">
+                        <div class="card-header p-0 border-0">
+                            <button class="btn btn-link w-100 text-start p-4 text-decoration-none collapsed" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">Can't download my configuration files</h6>
+                                    <i class="fas fa-chevron-down text-muted"></i>
+                                </div>
                             </button>
-                        </h6>
+                        </div>
                         <div id="faq3" class="collapse" data-bs-parent="#faqAccordion">
-                            <div class="small text-muted mt-2">
-                                Config files are available for download for 48 hours after purchase. 
-                                If you need files re-sent, contact support with your payment details.
+                            <div class="card-body pt-0">
+                                <p class="text-muted mb-3">Configuration files are available for 48 hours after purchase:</p>
+                                <ul class="text-muted">
+                                    <li>Check your browser's download folder</li>
+                                    <li>Try downloading from a different browser</li>
+                                    <li>Disable browser extensions that might block downloads</li>
+                                    <li>Ensure pop-ups are allowed for our website</li>
+                                </ul>
+                                <p class="text-muted">If you still can't download files, contact support with your payment confirmation.</p>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="mb-3">
-                        <h6 class="text-dark">
-                            <button class="btn btn-link p-0 text-dark text-decoration-none" type="button" 
-                                    data-bs-toggle="collapse" data-bs-target="#faq4">
-                                VPN stopped working
+                    <div class="card-modern mb-3">
+                        <div class="card-header p-0 border-0">
+                            <button class="btn btn-link w-100 text-start p-4 text-decoration-none collapsed" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">VPN suddenly stopped working</h6>
+                                    <i class="fas fa-chevron-down text-muted"></i>
+                                </div>
                             </button>
-                        </h6>
+                        </div>
                         <div id="faq4" class="collapse" data-bs-parent="#faqAccordion">
-                            <div class="small text-muted mt-2">
-                                Check if your 30-day access period has expired. If not, verify server status 
-                                or contact support for technical assistance.
+                            <div class="card-body pt-0">
+                                <p class="text-muted mb-3">Check these common causes:</p>
+                                <ol class="text-muted">
+                                    <li><strong>Expiration:</strong> Verify your 30-day access period hasn't ended</li>
+                                    <li><strong>Network change:</strong> Reconnect if you switched WiFi/mobile networks</li>
+                                    <li><strong>Server maintenance:</strong> Check our server status page</li>
+                                    <li><strong>App updates:</strong> Update your WireGuard app if available</li>
+                                    <li><strong>Device restart:</strong> Restart your device and try reconnecting</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-modern">
+                        <div class="card-header p-0 border-0">
+                            <button class="btn btn-link w-100 text-start p-4 text-decoration-none collapsed" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">Setting up VPN on multiple devices</h6>
+                                    <i class="fas fa-chevron-down text-muted"></i>
+                                </div>
+                            </button>
+                        </div>
+                        <div id="faq5" class="collapse" data-bs-parent="#faqAccordion">
+                            <div class="card-body pt-0">
+                                <p class="text-muted mb-3">You can use the same configuration on multiple devices:</p>
+                                <ul class="text-muted">
+                                    <li>Download WireGuard app on each device</li>
+                                    <li>Import the same .conf file on all devices</li>
+                                    <li>You can connect from multiple devices simultaneously</li>
+                                    <li>QR code makes mobile setup especially easy</li>
+                                </ul>
+                                <p class="text-muted">All devices will share the same VPN connection and IP address.</p>
                             </div>
                         </div>
                     </div>
@@ -145,7 +285,36 @@
             </div>
         </div>
     </div>
-</div>
+</section>
+
+<!-- Support CTA -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-6">
+                <div class="card-modern p-5">
+                    <i class="fas fa-headset text-primary mb-4" style="font-size: 3rem;"></i>
+                    <h4 class="fw-bold mb-3">Still Need Help?</h4>
+                    <p class="text-muted mb-4">
+                        Can't find the answer you're looking for? Our technical support team 
+                        is ready to provide personalized assistance with your VPN setup.
+                    </p>
+                    
+                    <div class="d-flex gap-3 justify-content-center flex-wrap">
+                        <a href="mailto:support@tunnelgrain.com" class="btn-primary-custom">
+                            <i class="fas fa-envelope me-2"></i>
+                            Email Support
+                        </a>
+                        <a href="{{ url_for('home') }}" class="btn-secondary-custom">
+                            <i class="fas fa-home me-2"></i>
+                            Back to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}
 
 {% block scripts %}
@@ -158,17 +327,89 @@
         const subject = document.getElementById('subject').value;
         const message = document.getElementById('message').value;
         
-        // Create mailto link (since this is a simple static form)
-        const mailtoLink = `mailto:support@tunnelgrain.com?subject=Tunnelgrain Support: ${subject}&body=${encodeURIComponent(message)}%0D%0A%0D%0AFrom: ${email}`;
+        // Validate form
+        if (!email || !subject || !message) {
+            showNotification('error', 'Form Incomplete', 'Please fill in all required fields.');
+            return;
+        }
+        
+        // Create mailto link
+        const mailtoSubject = `Tunnelgrain Support: ${subject}`;
+        const mailtoBody = `${message}\n\n---\nFrom: ${email}\nCategory: ${subject}\nSent via: Tunnelgrain Contact Form`;
+        const mailtoLink = `mailto:support@tunnelgrain.com?subject=${encodeURIComponent(mailtoSubject)}&body=${encodeURIComponent(mailtoBody)}`;
         
         // Open email client
         window.location.href = mailtoLink;
         
-        // Show confirmation
-        alert('Your email client should open with a pre-filled message. Send it to complete your support request.');
+        // Show success message
+        showNotification('success', 'Email Client Opening', 'Your email client should open with a pre-filled message. Send it to complete your support request.');
         
-        // Reset form
-        this.reset();
+        // Reset form after brief delay
+        setTimeout(() => {
+            this.reset();
+        }, 1000);
+    });
+    
+    function showNotification(type, title, message) {
+        const alertTypes = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        };
+        
+        const icons = {
+            'success': 'fas fa-check-circle',
+            'error': 'fas fa-times-circle',
+            'warning': 'fas fa-exclamation-triangle',
+            'info': 'fas fa-info-circle'
+        };
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert ${alertTypes[type]} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 100px; right: 20px; z-index: 9999; max-width: 400px; box-shadow: 0 8px 25px rgba(0,0,0,0.15);';
+        alertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="${icons[type]} me-2"></i>
+                <div>
+                    <strong>${title}</strong><br>
+                    <small>${message}</small>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.classList.remove('show');
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.parentNode.removeChild(alertDiv);
+                    }
+                }, 150);
+            }
+        }, 5000);
+    }
+    
+    // Add smooth animation to accordion items
+    document.addEventListener('DOMContentLoaded', function() {
+        const accordionButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
+        accordionButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const icon = this.querySelector('.fa-chevron-down');
+                if (icon) {
+                    setTimeout(() => {
+                        if (this.classList.contains('collapsed')) {
+                            icon.style.transform = 'rotate(0deg)';
+                        } else {
+                            icon.style.transform = 'rotate(180deg)';
+                        }
+                    }, 10);
+                }
+            });
+        });
     });
 </script>
 {% endblock %}

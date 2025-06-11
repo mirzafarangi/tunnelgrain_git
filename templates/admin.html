@@ -1,231 +1,258 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Panel - SecureVPN{% endblock %}
+{% block title %}Server Status - Tunnelgrain{% endblock %}
 
 {% block content %}
-<section class="py-5">
+<section class="section-padding">
     <div class="container">
-        <div class="row">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1 class="fw-bold">
-                        <i class="fas fa-cogs text-primary me-3"></i>
-                        Admin Panel
-                    </h1>
-                    <button class="btn btn-outline-primary" onclick="window.location.reload()">
-                        <i class="fas fa-sync me-1"></i>Refresh
-                    </button>
-                </div>
-                
-                <!-- Overview Cards -->
-                <div class="row mb-4">
-                    <div class="col-md-3 mb-3">
-                        <div class="card bg-primary text-white">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <h6 class="card-title">Monthly VPNs</h6>
-                                        <h3 class="mb-0">
-                                            {{ slots.monthly|selectattr('available')|list|length }}/10
-                                        </h3>
-                                        <small>Available</small>
-                                    </div>
-                                    <div class="align-self-center">
-                                        <i class="fas fa-users fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h1 class="section-title mb-2">
+                    <i class="fas fa-server text-primary me-3"></i>
+                    Server Status Dashboard
+                </h1>
+                <p class="text-muted">Real-time monitoring of VPN slot availability and system status</p>
+            </div>
+            <button class="btn-secondary-custom" onclick="window.location.reload()">
+                <i class="fas fa-sync me-2"></i>Refresh Data
+            </button>
+        </div>
+        
+        <!-- Overview Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Monthly VPNs</h6>
+                            <h3 class="fw-bold text-primary mb-0">
+                                {{ slots.monthly.values()|selectattr('available')|list|length }}/10
+                            </h3>
+                            <small class="text-muted">Available</small>
                         </div>
-                    </div>
-                    
-                    <div class="col-md-3 mb-3">
-                        <div class="card bg-success text-white">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <h6 class="card-title">Test VPNs</h6>
-                                        <h3 class="mb-0">
-                                            {{ slots.test|selectattr('available')|list|length }}/10
-                                        </h3>
-                                        <small>Available</small>
-                                    </div>
-                                    <div class="align-self-center">
-                                        <i class="fas fa-flask fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-3 mb-3">
-                        <div class="card bg-warning text-white">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <h6 class="card-title">Active Monthly</h6>
-                                        <h3 class="mb-0">
-                                            {{ 10 - (slots.monthly|selectattr('available')|list|length) }}
-                                        </h3>
-                                        <small>In Use</small>
-                                    </div>
-                                    <div class="align-self-center">
-                                        <i class="fas fa-chart-line fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-3 mb-3">
-                        <div class="card bg-info text-white">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <h6 class="card-title">Active Tests</h6>
-                                        <h3 class="mb-0">
-                                            {{ 10 - (slots.test|selectattr('available')|list|length) }}
-                                        </h3>
-                                        <small>In Use</small>
-                                    </div>
-                                    <div class="align-self-center">
-                                        <i class="fas fa-clock fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="text-primary opacity-75">
+                            <i class="fas fa-users" style="font-size: 2.5rem;"></i>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Monthly VPN Slots -->
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">
-                            <i class="fas fa-users me-2"></i>
-                            Monthly VPN Slots
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Slot ID</th>
-                                        <th>Status</th>
-                                        <th>Assigned At</th>
-                                        <th>Expires At</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for slot_id, slot_data in slots.monthly.items() %}
-                                    <tr>
-                                        <td>
-                                            <code>{{ slot_id }}</code>
-                                        </td>
-                                        <td>
-                                            {% if slot_data.available %}
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check me-1"></i>Available
-                                                </span>
-                                            {% else %}
-                                                <span class="badge bg-warning">
-                                                    <i class="fas fa-user me-1"></i>In Use
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if slot_data.assigned_at %}
-                                                <small>{{ slot_data.assigned_at[:19] }}</small>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if slot_data.expires_at %}
-                                                <small>{{ slot_data.expires_at[:19] }}</small>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if not slot_data.available %}
-                                                <button class="btn btn-sm btn-outline-danger" 
-                                                        onclick="releaseSlot('monthly', '{{ slot_id }}')">
-                                                    <i class="fas fa-times me-1"></i>Release
-                                                </button>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Test VPNs</h6>
+                            <h3 class="fw-bold text-success mb-0">
+                                {{ slots.test.values()|selectattr('available')|list|length }}/10
+                            </h3>
+                            <small class="text-muted">Available</small>
+                        </div>
+                        <div class="text-success opacity-75">
+                            <i class="fas fa-flask" style="font-size: 2.5rem;"></i>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Test VPN Slots -->
-                <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0">
-                            <i class="fas fa-flask me-2"></i>
-                            Test VPN Slots
-                        </h5>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Active Monthly</h6>
+                            <h3 class="fw-bold text-warning mb-0">
+                                {{ 10 - (slots.monthly.values()|selectattr('available')|list|length) }}
+                            </h3>
+                            <small class="text-muted">In Use</small>
+                        </div>
+                        <div class="text-warning opacity-75">
+                            <i class="fas fa-chart-line" style="font-size: 2.5rem;"></i>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Slot ID</th>
-                                        <th>Status</th>
-                                        <th>Assigned At</th>
-                                        <th>Expires At</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for slot_id, slot_data in slots.test.items() %}
-                                    <tr>
-                                        <td>
-                                            <code>{{ slot_id }}</code>
-                                        </td>
-                                        <td>
-                                            {% if slot_data.available %}
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check me-1"></i>Available
-                                                </span>
-                                            {% else %}
-                                                <span class="badge bg-warning">
-                                                    <i class="fas fa-user me-1"></i>In Use
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if slot_data.assigned_at %}
-                                                <small>{{ slot_data.assigned_at[:19] }}</small>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if slot_data.expires_at %}
-                                                <small>{{ slot_data.expires_at[:19] }}</small>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if not slot_data.available %}
-                                                <button class="btn btn-sm btn-outline-danger" 
-                                                        onclick="releaseSlot('test', '{{ slot_id }}')">
-                                                    <i class="fas fa-times me-1"></i>Release
-                                                </button>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Active Tests</h6>
+                            <h3 class="fw-bold text-info mb-0">
+                                {{ 10 - (slots.test.values()|selectattr('available')|list|length) }}
+                            </h3>
+                            <small class="text-muted">In Use</small>
+                        </div>
+                        <div class="text-info opacity-75">
+                            <i class="fas fa-clock" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Monthly VPN Slots -->
+        <div class="card-modern mb-5">
+            <div class="card-header bg-primary text-white p-4">
+                <h5 class="fw-bold mb-0">
+                    <i class="fas fa-users me-2"></i>
+                    Monthly VPN Slots
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="px-4 py-3">Slot ID</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3">Assigned</th>
+                                <th class="px-4 py-3">Expires</th>
+                                <th class="px-4 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slot_id, slot_data in slots.monthly.items() %}
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <code class="bg-light p-2 rounded">{{ slot_id }}</code>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if slot_data.available %}
+                                        <span class="status-indicator status-online">
+                                            <span class="status-dot online"></span>Available
+                                        </span>
+                                    {% else %}
+                                        <span class="status-indicator status-busy">
+                                            <span class="status-dot busy"></span>In Use
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if slot_data.assigned_at %}
+                                        <small class="text-muted">{{ slot_data.assigned_at[:19].replace('T', ' ') }}</small>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if slot_data.expires_at %}
+                                        <small class="text-muted">{{ slot_data.expires_at[:19].replace('T', ' ') }}</small>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if not slot_data.available %}
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="releaseSlot('monthly', '{{ slot_id }}')">
+                                            <i class="fas fa-times me-1"></i>Release
+                                        </button>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test VPN Slots -->
+        <div class="card-modern">
+            <div class="card-header bg-success text-white p-4">
+                <h5 class="fw-bold mb-0">
+                    <i class="fas fa-flask me-2"></i>
+                    Test VPN Slots
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="px-4 py-3">Slot ID</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3">Assigned</th>
+                                <th class="px-4 py-3">Expires</th>
+                                <th class="px-4 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slot_id, slot_data in slots.test.items() %}
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <code class="bg-light p-2 rounded">{{ slot_id }}</code>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if slot_data.available %}
+                                        <span class="status-indicator status-online">
+                                            <span class="status-dot online"></span>Available
+                                        </span>
+                                    {% else %}
+                                        <span class="status-indicator status-busy">
+                                            <span class="status-dot busy"></span>In Use
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if slot_data.assigned_at %}
+                                        <small class="text-muted">{{ slot_data.assigned_at[:19].replace('T', ' ') }}</small>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if slot_data.expires_at %}
+                                        <small class="text-muted">{{ slot_data.expires_at[:19].replace('T', ' ') }}</small>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if not slot_data.available %}
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="releaseSlot('test', '{{ slot_id }}')">
+                                            <i class="fas fa-times me-1"></i>Release
+                                        </button>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Info -->
+        <div class="row mt-5">
+            <div class="col-lg-12">
+                <div class="card-modern p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        System Information
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <small class="text-muted">Server Status</small>
+                            <div class="status-indicator status-online">
+                                <span class="status-dot online"></span>Online
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Auto-refresh</small>
+                            <div class="text-dark">Every 30 seconds</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">VPN Protocol</small>
+                            <div class="text-dark">WireGuard</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Last Updated</small>
+                            <div class="text-dark" id="lastUpdated">Just now</div>
                         </div>
                     </div>
                 </div>
@@ -238,16 +265,109 @@
 {% block scripts %}
 <script>
     function releaseSlot(slotType, slotId) {
-        if (confirm(`Are you sure you want to release ${slotId}?`)) {
-            // In a real app, this would make an API call to release the slot
-            alert(`Slot ${slotId} would be released. (Not implemented in demo)`);
-            // window.location.reload();
+        if (confirm(`Are you sure you want to release ${slotId}?\n\nThis will immediately disconnect the user and make the slot available for others.`)) {
+            // In a production app, this would make an API call to release the slot
+            showNotification('warning', 'Manual Release', `Slot ${slotId} would be released manually. (Demo mode - not implemented)`);
         }
     }
     
+    function showNotification(type, title, message) {
+        const alertTypes = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        };
+        
+        const icons = {
+            'success': 'fas fa-check-circle',
+            'error': 'fas fa-times-circle',
+            'warning': 'fas fa-exclamation-triangle',
+            'info': 'fas fa-info-circle'
+        };
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert ${alertTypes[type]} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 100px; right: 20px; z-index: 9999; max-width: 400px; box-shadow: 0 8px 25px rgba(0,0,0,0.15);';
+        alertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="${icons[type]} me-2"></i>
+                <div>
+                    <strong>${title}</strong><br>
+                    <small>${message}</small>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.classList.remove('show');
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.parentNode.removeChild(alertDiv);
+                    }
+                }, 150);
+            }
+        }, 5000);
+    }
+    
     // Auto-refresh every 30 seconds
-    setInterval(() => {
+    let refreshInterval = setInterval(() => {
         window.location.reload();
     }, 30000);
+    
+    // Update last updated timestamp
+    function updateTimestamp() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+        document.getElementById('lastUpdated').textContent = timeString;
+    }
+    
+    // Update timestamp every second
+    setInterval(updateTimestamp, 1000);
+    updateTimestamp();
+    
+    // Pause auto-refresh when user is actively viewing
+    let userActive = true;
+    let activityTimer;
+    
+    function resetActivityTimer() {
+        userActive = true;
+        clearTimeout(activityTimer);
+        activityTimer = setTimeout(() => {
+            userActive = false;
+        }, 60000); // Consider user inactive after 1 minute
+    }
+    
+    document.addEventListener('mousemove', resetActivityTimer);
+    document.addEventListener('keypress', resetActivityTimer);
+    document.addEventListener('scroll', resetActivityTimer);
+    
+    // Visual feedback for table rows
+    document.addEventListener('DOMContentLoaded', function() {
+        const tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
+            });
+            
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+            });
+        });
+        
+        // Add loading animation to refresh button
+        const refreshBtn = document.querySelector('[onclick="window.location.reload()"]');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Refreshing...';
+                this.disabled = true;
+            });
+        }
+    });
 </script>
 {% endblock %}

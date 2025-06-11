@@ -3,139 +3,486 @@
 {% block title %}Service Policy - Tunnelgrain{% endblock %}
 
 {% block content %}
-<div class="content-wrapper">
-    <h1 class="page-title">Service Policy</h1>
-    <p class="page-subtitle">
-        Clear terms for our VPN service usage and support
-    </p>
-    
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <!-- No Refund Policy -->
-            <div class="card-clean p-4 mb-4">
-                <h3 class="h5 mb-3">Payment & Refund Policy</h3>
-                <div class="mb-4">
-                    <h6 class="text-dark">No Refunds Policy</h6>
-                    <p>All sales are final. We do not offer refunds for VPN purchases except in cases of proven technical failure on our end.</p>
-                    
-                    <h6 class="text-dark">Why No Refunds?</h6>
-                    <ul class="small">
-                        <li>We provide a free 15-minute test before purchase</li>
-                        <li>You can verify compatibility and performance before buying</li>
-                        <li>This keeps our service affordable and sustainable</li>
-                    </ul>
-                </div>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark">Technical Failure Exception</h6>
-                    <p>Refunds may be considered if:</p>
-                    <ul class="small">
-                        <li>Our servers are down for more than 48 consecutive hours</li>
-                        <li>Your VPN config is technically faulty due to our error</li>
-                        <li>Service is completely inaccessible due to our infrastructure failure</li>
-                    </ul>
-                    <p class="small text-muted">
-                        Technical failures must be documented and verified by our support team.
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content text-center">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold mb-4">
+                        Service Policy
+                        <span class="d-block text-warning">Clear Terms & Conditions</span>
+                    </h1>
+                    <p class="lead mb-4 opacity-90">
+                        Transparent policies and terms for our VPN service. 
+                        We believe in honest communication about what we offer and our limitations.
                     </p>
                 </div>
-            </div>
-            
-            <!-- Service Terms -->
-            <div class="card-clean p-4 mb-4">
-                <h3 class="h5 mb-3">Service Terms</h3>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark">Access Duration</h6>
-                    <ul class="small">
-                        <li>Monthly VPN: 30 days from purchase date</li>
-                        <li>Test VPN: 15 minutes from activation</li>
-                        <li>No extensions or rollover of unused time</li>
-                    </ul>
-                </div>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark">Fair Usage</h6>
-                    <ul class="small">
-                        <li>Service is for legitimate personal use only</li>
-                        <li>No commercial reselling or sharing of credentials</li>
-                        <li>No illegal activities or network abuse</li>
-                        <li>We reserve the right to terminate service for violations</li>
-                    </ul>
-                </div>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark">Technical Limitations</h6>
-                    <ul class="small">
-                        <li>Limited to 10 concurrent monthly users</li>
-                        <li>Service availability depends on server status</li>
-                        <li>Performance may vary based on location and network conditions</li>
-                        <li>We provide service "as-is" without performance guarantees</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <!-- Support -->
-            <div class="card-clean p-4 mb-4">
-                <h3 class="h5 mb-3">Technical Support</h3>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark">What We Help With</h6>
-                    <ul class="small">
-                        <li>WireGuard configuration assistance</li>
-                        <li>Connection troubleshooting</li>
-                        <li>Config file re-delivery</li>
-                        <li>Server status inquiries</li>
-                    </ul>
-                </div>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark">Response Times</h6>
-                    <p class="small">
-                        Support requests are handled on a best-effort basis. 
-                        Response time typically 24-48 hours via email.
-                    </p>
-                </div>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark">Contact Methods</h6>
-                    <ul class="small">
-                        <li>Email: <a href="mailto:support@tunnelgrain.com">support@tunnelgrain.com</a></li>
-                        <li>Include your purchase details and detailed description of the issue</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <!-- Privacy -->
-            <div class="card-clean p-4 mb-4">
-                <h3 class="h5 mb-3">Privacy Practices</h3>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark">What We Don't Log</h6>
-                    <ul class="small">
-                        <li>Your browsing activity or destinations</li>
-                        <li>Connection timestamps or duration</li>
-                        <li>Data transferred or bandwidth usage</li>
-                        <li>DNS requests or IP addresses visited</li>
-                    </ul>
-                </div>
-                
-                <div class="mb-4">
-                    <h6 class="text-dark">What We Do Track</h6>
-                    <ul class="small">
-                        <li>VPN slot assignments for service management</li>
-                        <li>Payment records for billing purposes</li>
-                        <li>Basic server performance metrics</li>
-                        <li>Support ticket history</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <!-- Contact -->
-            <div class="text-center">
-                <p class="text-muted">Questions about our service policy?</p>
-                <a href="{{ url_for('contact') }}" class="btn-primary-clean">Contact Support</a>
             </div>
         </div>
     </div>
-</div>
+</section>
+
+<!-- Policy Content -->
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                
+                <!-- Refund Policy -->
+                <div class="card-modern p-5 mb-5">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-warning text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                             style="width: 50px; height: 50px;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold mb-1">Payment & Refund Policy</h3>
+                            <p class="text-muted mb-0">Important information about our no-refund policy</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="mb-4">
+                                <h5 class="fw-bold text-danger mb-3">No Refunds Policy</h5>
+                                <p class="mb-3">
+                                    <strong>All sales are final.</strong> We do not offer refunds for VPN purchases 
+                                    except in cases of proven technical failure on our end.
+                                </p>
+                                
+                                <h6 class="fw-bold mb-3">Why No Refunds?</h6>
+                                <ul class="mb-4">
+                                    <li>We provide a <strong>free 15-minute test</strong> before purchase</li>
+                                    <li>You can verify compatibility and performance before buying</li>
+                                    <li>This policy keeps our service affordable and sustainable</li>
+                                    <li>It prevents abuse of our limited-capacity service</li>
+                                </ul>
+                                
+                                <div class="bg-light rounded p-4">
+                                    <h6 class="fw-bold text-success mb-2">
+                                        <i class="fas fa-tools me-2"></i>Technical Failure Exception
+                                    </h6>
+                                    <p class="mb-2">Refunds may be considered only if:</p>
+                                    <ul class="mb-2">
+                                        <li>Our servers are down for more than <strong>48 consecutive hours</strong></li>
+                                        <li>Your VPN config is technically faulty due to <strong>our error</strong></li>
+                                        <li>Service is completely inaccessible due to our infrastructure failure</li>
+                                    </ul>
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Technical failures must be documented and verified by our support team.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="card-modern p-4 h-100" style="background: rgba(255, 193, 7, 0.1); border-color: var(--warning-color);">
+                                <h6 class="fw-bold text-warning mb-3">
+                                    <i class="fas fa-lightbulb me-2"></i>Before You Buy
+                                </h6>
+                                <ul class="list-unstyled small">
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Try our 15-minute test first
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Test on all your devices
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Verify connection speed
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Check compatibility
+                                    </li>
+                                    <li class="mb-0">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Contact support if needed
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Service Terms -->
+                <div class="card-modern p-5 mb-5">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                             style="width: 50px; height: 50px;">
+                            <i class="fas fa-file-contract"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold mb-1">Service Terms</h3>
+                            <p class="text-muted mb-0">What you can expect from our VPN service</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-4">
+                            <h6 class="fw-bold mb-3">
+                                <i class="fas fa-clock text-primary me-2"></i>Access Duration
+                            </h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <strong>Monthly VPN:</strong> 30 days from purchase
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Test VPN:</strong> 15 minutes from activation
+                                </li>
+                                <li class="mb-0">
+                                    <strong>Extensions:</strong> No rollover of unused time
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <h6 class="fw-bold mb-3">
+                                <i class="fas fa-users text-success me-2"></i>Fair Usage
+                            </h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">Service for legitimate personal use only</li>
+                                <li class="mb-2">No commercial reselling of credentials</li>
+                                <li class="mb-2">No illegal activities or network abuse</li>
+                                <li class="mb-0">Termination rights reserved for violations</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <h6 class="fw-bold mb-3">
+                                <i class="fas fa-server text-warning me-2"></i>Technical Limits
+                            </h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">Maximum 10 concurrent monthly users</li>
+                                <li class="mb-2">Service depends on server availability</li>
+                                <li class="mb-2">Performance varies by location/network</li>
+                                <li class="mb-0">Provided "as-is" without guarantees</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Support -->
+                <div class="card-modern p-5 mb-5">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                             style="width: 50px; height: 50px;">
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold mb-1">Technical Support</h3>
+                            <p class="text-muted mb-0">What we help with and response expectations</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold mb-3">
+                                <i class="fas fa-check-circle text-success me-2"></i>What We Help With
+                            </h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-cog text-muted me-2"></i>
+                                    WireGuard configuration assistance
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-wifi text-muted me-2"></i>
+                                    Connection troubleshooting
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-download text-muted me-2"></i>
+                                    Config file re-delivery
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-server text-muted me-2"></i>
+                                    Server status inquiries
+                                </li>
+                                <li class="mb-0">
+                                    <i class="fas fa-mobile-alt text-muted me-2"></i>
+                                    Multi-device setup guidance
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold mb-3">
+                                <i class="fas fa-clock text-primary me-2"></i>Support Details
+                            </h6>
+                            <div class="mb-3">
+                                <strong>Response Time:</strong>
+                                <span class="text-muted">24-48 hours typically</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Contact Method:</strong>
+                                <span class="text-muted">Email support only</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Support Hours:</strong>
+                                <span class="text-muted">Best effort basis</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Email Address:</strong>
+                                <a href="mailto:support@tunnelgrain.com" class="text-primary">support@tunnelgrain.com</a>
+                            </div>
+                            <small class="text-muted">
+                                Include your purchase details and detailed description of the issue for faster resolution.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Privacy Practices -->
+                <div class="card-modern p-5 mb-5">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                             style="width: 50px; height: 50px;">
+                            <i class="fas fa-eye-slash"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold mb-1">Privacy Practices</h3>
+                            <p class="text-muted mb-0">What we log and what we don't</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <div class="bg-light rounded p-4 h-100">
+                                <h6 class="fw-bold text-success mb-3">
+                                    <i class="fas fa-shield-alt me-2"></i>What We DON'T Log
+                                </h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li class="mb-2">
+                                        <i class="fas fa-times text-success me-2"></i>
+                                        Your browsing activity or destinations
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-times text-success me-2"></i>
+                                        Connection timestamps or duration
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-times text-success me-2"></i>
+                                        Data transferred or bandwidth usage
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-times text-success me-2"></i>
+                                        DNS requests or IP addresses visited
+                                    </li>
+                                    <li class="mb-0">
+                                        <i class="fas fa-times text-success me-2"></i>
+                                        Personal identifying information
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <div class="bg-light rounded p-4 h-100">
+                                <h6 class="fw-bold text-primary mb-3">
+                                    <i class="fas fa-list me-2"></i>What We DO Track
+                                </h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-primary me-2"></i>
+                                        VPN slot assignments (for service management)
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-primary me-2"></i>
+                                        Payment records (for billing purposes)
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-primary me-2"></i>
+                                        Basic server performance metrics
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-primary me-2"></i>
+                                        Support ticket history
+                                    </li>
+                                    <li class="mb-0">
+                                        <i class="fas fa-check text-primary me-2"></i>
+                                        Service usage statistics (anonymous)
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Service Limitations -->
+                <div class="card-modern p-5 mb-5">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-warning text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                             style="width: 50px; height: 50px;">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold mb-1">Service Limitations</h3>
+                            <p class="text-muted mb-0">Important restrictions and capacity limits</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold mb-3">Capacity Restrictions</h6>
+                            <p class="text-muted mb-3">
+                                We intentionally limit our service to ensure quality for all users:
+                            </p>
+                            <ul class="text-muted">
+                                <li>Maximum 10 concurrent monthly VPN users</li>
+                                <li>Maximum 10 concurrent test VPN users</li>
+                                <li>First-come, first-served slot allocation</li>
+                                <li>No reservations or advance bookings</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold mb-3">Technical Disclaimers</h6>
+                            <p class="text-muted mb-3">
+                                Please be aware of these technical limitations:
+                            </p>
+                            <ul class="text-muted">
+                                <li>Service availability depends on server status</li>
+                                <li>Performance varies by location and ISP</li>
+                                <li>No guaranteed uptime or speed levels</li>
+                                <li>Service provided "as-is" without warranties</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Legal Information -->
+                <div class="card-modern p-5">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                             style="width: 50px; height: 50px;">
+                            <i class="fas fa-gavel"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold mb-1">Legal & Compliance</h3>
+                            <p class="text-muted mb-0">Terms of use and legal obligations</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-lg-8">
+                            <h6 class="fw-bold mb-3">Acceptable Use</h6>
+                            <p class="mb-3">By using our service, you agree to:</p>
+                            <ul class="mb-4">
+                                <li>Use the VPN for legitimate, legal purposes only</li>
+                                <li>Not engage in illegal activities or network abuse</li>
+                                <li>Not resell or redistribute access credentials</li>
+                                <li>Comply with applicable laws in your jurisdiction</li>
+                                <li>Respect the rights and privacy of others</li>
+                            </ul>
+                            
+                            <h6 class="fw-bold mb-3">Service Termination</h6>
+                            <p class="mb-0">
+                                We reserve the right to terminate service immediately for violations 
+                                of these terms, illegal activity, or abuse of our network resources. 
+                                No refunds will be provided for terminated accounts.
+                            </p>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="bg-light rounded p-4">
+                                <h6 class="fw-bold mb-3">
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                    Important Notice
+                                </h6>
+                                <p class="small text-muted mb-3">
+                                    This service is provided for privacy protection and security purposes. 
+                                    Users are responsible for compliance with all applicable laws.
+                                </p>
+                                <p class="small text-muted mb-0">
+                                    These terms may be updated periodically. 
+                                    Continued use constitutes acceptance of changes.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact CTA -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-6">
+                <div class="card-modern p-5">
+                    <i class="fas fa-question-circle text-primary mb-4" style="font-size: 3rem;"></i>
+                    <h4 class="fw-bold mb-3">Questions About Our Policies?</h4>
+                    <p class="text-muted mb-4">
+                        Need clarification on any of these terms or have specific questions 
+                        about our service? Our support team is here to help.
+                    </p>
+                    
+                    <div class="d-flex gap-3 justify-content-center flex-wrap">
+                        <a href="{{ url_for('contact') }}" class="btn-primary-custom">
+                            <i class="fas fa-envelope me-2"></i>
+                            Contact Support
+                        </a>
+                        <a href="{{ url_for('test') }}" class="btn-secondary-custom">
+                            <i class="fas fa-flask me-2"></i>
+                            Try Free Test
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add smooth scroll behavior for internal links
+    document.addEventListener('DOMContentLoaded', function() {
+        // Highlight important warnings
+        const warningElements = document.querySelectorAll('.text-danger, .bg-warning');
+        warningElements.forEach(element => {
+            element.style.transition = 'all 0.3s ease';
+        });
+        
+        // Add hover effects to policy cards
+        const policyCards = document.querySelectorAll('.card-modern');
+        policyCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+        
+        // Smooth reveal animation for cards
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+        
+        // Apply animation to policy cards
+        policyCards.forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+    });
+</script>
 {% endblock %}
