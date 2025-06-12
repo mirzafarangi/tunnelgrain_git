@@ -10,7 +10,7 @@ import uuid
 import hashlib
 from functools import wraps
 from collections import defaultdict
-from database_manager import DatabaseSlotManager
+from database_manager import OrderBasedSlotManager
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
@@ -88,8 +88,8 @@ def check_test_vpn_abuse(request):
     
     return True, f"Test VPN granted. {3 - len(test_usage_tracker[fingerprint])} remaining today."
 
-# Initialize DatabaseSlotManager
-slot_manager = DatabaseSlotManager()
+# Initialize OrderBasedSlotManager
+slot_manager = OrderBasedSlotManager()
 
 # Main routes
 @app.route('/')
@@ -152,31 +152,47 @@ def get_test_vpn():
 
 @app.route('/download-test-config')
 def download_test_config():
-    """Download test VPN config"""
+    """Download test VPN config using order number"""
     if 'test_slot' not in session:
         return "No test VPN assigned", 404
     
     slot_id = session['test_slot']
-    config_path = os.path.join(TEST_DIR, f'{slot_id}.conf')
+    order_number = session.get('test_order')
+    
+    # Try order number first, then fall back to slot_id
+    if order_number and order_number.startswith('72'):
+        config_path = os.path.join(TEST_DIR, f'{order_number}.conf')
+        filename = f'tunnelgrain_{order_number}.conf'
+    else:
+        config_path = os.path.join(TEST_DIR, f'{slot_id}.conf')
+        filename = f'tunnelgrain_{slot_id}.conf'
     
     if not os.path.exists(config_path):
         return "Config file not found", 404
     
-    return send_file(config_path, as_attachment=True, download_name=f'tunnelgrain_{slot_id}.conf')
+    return send_file(config_path, as_attachment=True, download_name=filename)
 
 @app.route('/download-test-qr')
 def download_test_qr():
-    """Download test VPN QR code"""
+    """Download test VPN QR code using order number"""
     if 'test_slot' not in session:
         return "No test VPN assigned", 404
     
     slot_id = session['test_slot']
-    qr_path = os.path.join(QR_DIR, f'{slot_id}.png')
+    order_number = session.get('test_order')
+    
+    # Try order number first, then fall back to slot_id  
+    if order_number and order_number.startswith('72'):
+        qr_path = os.path.join(QR_DIR, f'{order_number}.png')
+        filename = f'tunnelgrain_{order_number}_qr.png'
+    else:
+        qr_path = os.path.join(QR_DIR, f'{slot_id}.png')
+        filename = f'tunnelgrain_{slot_id}_qr.png'
     
     if not os.path.exists(qr_path):
         return "QR code not found", 404
     
-    return send_file(qr_path, as_attachment=True, download_name=f'tunnelgrain_{slot_id}_qr.png')
+    return send_file(qr_path, as_attachment=True, download_name=filename)
 
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
@@ -280,36 +296,52 @@ def payment_success():
 
 @app.route('/download-monthly-config')
 def download_monthly_config():
-    """Download monthly VPN config"""
+    """Download monthly VPN config using order number"""
     if 'monthly_slot' not in session:
         return "No monthly VPN purchased", 404
     
     slot_id = session['monthly_slot']
-    config_path = os.path.join(MONTHLY_DIR, f'{slot_id}.conf')
+    order_number = session.get('order_number')
+    
+    # Try order number first, then fall back to slot_id
+    if order_number and order_number.startswith('42'):
+        config_path = os.path.join(MONTHLY_DIR, f'{order_number}.conf')
+        filename = f'tunnelgrain_{order_number}.conf'
+    else:
+        config_path = os.path.join(MONTHLY_DIR, f'{slot_id}.conf')
+        filename = f'tunnelgrain_{slot_id}.conf'
     
     if not os.path.exists(config_path):
         return "Config file not found", 404
     
-    return send_file(config_path, as_attachment=True, download_name=f'tunnelgrain_{slot_id}.conf')
+    return send_file(config_path, as_attachment=True, download_name=filename)
 
 @app.route('/download-monthly-qr')
 def download_monthly_qr():
-    """Download monthly VPN QR code"""
+    """Download monthly VPN QR code using order number"""
     if 'monthly_slot' not in session:
         return "No monthly VPN purchased", 404
     
     slot_id = session['monthly_slot']
-    qr_path = os.path.join(QR_DIR, f'{slot_id}.png')
+    order_number = session.get('order_number')
+    
+    # Try order number first, then fall back to slot_id
+    if order_number and order_number.startswith('42'):
+        qr_path = os.path.join(QR_DIR, f'{order_number}.png')
+        filename = f'tunnelgrain_{order_number}_qr.png'
+    else:
+        qr_path = os.path.join(QR_DIR, f'{slot_id}.png')
+        filename = f'tunnelgrain_{slot_id}_qr.png'
     
     if not os.path.exists(qr_path):
         return "QR code not found", 404
     
-    return send_file(qr_path, as_attachment=True, download_name=f'tunnelgrain_{slot_id}_qr.png')
+    return send_file(qr_path, as_attachment=True, download_name=filename)
 
-# Order lookup system
+# Enhanced Order lookup system
 @app.route('/check-order', methods=['POST'])
 def check_order():
-    """Check order status by order number"""
+    """Enhanced order check with slot info and download links"""
     order_number = request.form.get('order_number', '').strip().upper()
     
     if not order_number.startswith('42') or len(order_number) != 8:
@@ -327,7 +359,10 @@ def check_order():
             'error': 'Order not found'
         })
     
-    # Calculate days remaining
+    # Calculate time remaining
+    status = 'unknown'
+    time_remaining = 'unknown'
+    
     if slot_data.get('expires_at'):
         try:
             expires_at = datetime.fromisoformat(slot_data['expires_at'])
@@ -345,9 +380,18 @@ def check_order():
         except:
             time_remaining = 'unknown'
             status = 'unknown'
-    else:
-        time_remaining = 'unknown'
-        status = 'unknown'
+    
+    # Generate download URLs if order is active
+    download_urls = {}
+    if status == 'active':
+        # Store in session temporarily for download access
+        session[f'recovery_{order_number}_slot'] = slot_id
+        session[f'recovery_{order_number}_type'] = slot_type
+        
+        download_urls = {
+            'config_url': url_for('download_recovery_config', order_number=order_number),
+            'qr_url': url_for('download_recovery_qr', order_number=order_number)
+        }
     
     return jsonify({
         'order_found': True,
@@ -355,8 +399,58 @@ def check_order():
         'slot_id': slot_id,
         'status': status,
         'time_remaining': time_remaining,
-        'assigned_at': slot_data.get('assigned_at', 'unknown')
+        'assigned_at': slot_data.get('assigned_at', 'unknown'),
+        'download_urls': download_urls
     })
+
+# Recovery download routes
+@app.route('/recovery/<order_number>/config')
+def download_recovery_config(order_number):
+    """Download config file via order number recovery"""
+    if f'recovery_{order_number}_slot' not in session:
+        return "Recovery session expired. Please check order again.", 404
+    
+    slot_id = session[f'recovery_{order_number}_slot']
+    slot_type = session[f'recovery_{order_number}_type']
+    
+    # Try order-based filename first
+    if order_number.startswith('42'):
+        config_path = os.path.join(MONTHLY_DIR, f'{order_number}.conf')
+    elif order_number.startswith('72'):
+        config_path = os.path.join(TEST_DIR, f'{order_number}.conf')
+    else:
+        # Fallback to slot-based filename
+        if slot_type == 'monthly':
+            config_path = os.path.join(MONTHLY_DIR, f'{slot_id}.conf')
+        else:
+            config_path = os.path.join(TEST_DIR, f'{slot_id}.conf')
+    
+    if not os.path.exists(config_path):
+        return "Config file not found", 404
+    
+    return send_file(config_path, as_attachment=True, 
+                    download_name=f'tunnelgrain_{order_number}.conf')
+
+@app.route('/recovery/<order_number>/qr')
+def download_recovery_qr(order_number):
+    """Download QR code via order number recovery"""
+    if f'recovery_{order_number}_slot' not in session:
+        return "Recovery session expired. Please check order again.", 404
+    
+    slot_id = session[f'recovery_{order_number}_slot']
+    
+    # Try order-based filename first
+    if order_number.startswith(('42', '72')):
+        qr_path = os.path.join(QR_DIR, f'{order_number}.png')
+    else:
+        # Fallback to slot-based filename
+        qr_path = os.path.join(QR_DIR, f'{slot_id}.png')
+    
+    if not os.path.exists(qr_path):
+        return "QR code not found", 404
+    
+    return send_file(qr_path, as_attachment=True, 
+                    download_name=f'tunnelgrain_{order_number}_qr.png')
 
 # Admin routes (protected)
 @app.route('/admin')
@@ -365,6 +459,127 @@ def admin():
     """Secure admin panel to view slot status"""
     slot_manager.cleanup_expired_slots()
     return render_template('admin.html', slots=slot_manager.get_slots())
+
+@app.route('/admin/database-reset', methods=['POST'])
+@admin_required
+def database_reset():
+    """DANGER: Reset database to clean state - removes all customer data"""
+    reset_type = request.form.get('reset_type', 'slots_only')
+    
+    try:
+        if hasattr(slot_manager, 'use_database') and slot_manager.use_database:
+            # Database reset
+            conn = slot_manager.get_connection()
+            cursor = conn.cursor()
+            
+            if reset_type == 'full_reset':
+                # NUCLEAR OPTION: Drop and recreate table
+                cursor.execute("DROP TABLE IF EXISTS vpn_slots;")
+                
+                cursor.execute("""
+                    CREATE TABLE vpn_slots (
+                        slot_id VARCHAR(20) PRIMARY KEY,
+                        slot_type VARCHAR(10) NOT NULL,
+                        available BOOLEAN DEFAULT TRUE,
+                        assigned_at TIMESTAMP,
+                        expires_at TIMESTAMP,
+                        order_number VARCHAR(20),
+                        stripe_session_id VARCHAR(200),
+                        auto_managed BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                
+                # Recreate indexes
+                cursor.execute("CREATE INDEX idx_vpn_slots_type_available ON vpn_slots (slot_type, available);")
+                cursor.execute("CREATE INDEX idx_vpn_slots_expires ON vpn_slots (expires_at) WHERE expires_at IS NOT NULL;")
+                cursor.execute("CREATE INDEX idx_vpn_slots_order ON vpn_slots (order_number) WHERE order_number IS NOT NULL;")
+                
+                # Repopulate slots
+                slot_manager.populate_initial_slots(cursor)
+                
+            elif reset_type == 'clear_assignments':
+                # Clear all assignments but keep structure
+                cursor.execute("""
+                    UPDATE vpn_slots SET 
+                    available = TRUE,
+                    assigned_at = NULL,
+                    expires_at = NULL,
+                    order_number = NULL,
+                    stripe_session_id = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                """)
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Database {reset_type} completed',
+                'reset_type': reset_type
+            })
+        
+        else:
+            # JSON file reset
+            if reset_type == 'full_reset' or reset_type == 'clear_assignments':
+                slot_manager.create_initial_fallback_slots()
+                return jsonify({
+                    'success': True,
+                    'message': 'JSON slots reset completed',
+                    'reset_type': reset_type
+                })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/admin/database-status')
+@admin_required 
+def database_status():
+    """Check database status and statistics"""
+    try:
+        slots = slot_manager.get_slots()
+        
+        stats = {
+            'database_type': 'PostgreSQL' if (hasattr(slot_manager, 'use_database') and slot_manager.use_database) else 'JSON File',
+            'total_slots': len(slots.get('monthly', {})) + len(slots.get('test', {})),
+            'monthly_available': sum(1 for slot in slots.get('monthly', {}).values() if slot.get('available', True)),
+            'test_available': sum(1 for slot in slots.get('test', {}).values() if slot.get('available', True)),
+            'active_orders': [],
+            'expired_orders': []
+        }
+        
+        # Collect order information
+        for slot_type in ['monthly', 'test']:
+            for slot_id, slot_data in slots.get(slot_type, {}).items():
+                if slot_data.get('order_number'):
+                    order_info = {
+                        'order_number': slot_data['order_number'],
+                        'slot_id': slot_id,
+                        'slot_type': slot_type,
+                        'assigned_at': slot_data.get('assigned_at'),
+                        'expires_at': slot_data.get('expires_at')
+                    }
+                    
+                    # Check if expired
+                    if slot_data.get('expires_at'):
+                        try:
+                            expires_at = datetime.fromisoformat(slot_data['expires_at'])
+                            if datetime.now() > expires_at:
+                                stats['expired_orders'].append(order_info)
+                            else:
+                                stats['active_orders'].append(order_info)
+                        except:
+                            stats['expired_orders'].append(order_info)
+        
+        return jsonify(stats)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # API endpoints
 @app.route('/api/slot-status')

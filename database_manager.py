@@ -50,6 +50,11 @@ class DatabaseSlotManager:
                 ON vpn_slots (expires_at) WHERE expires_at IS NOT NULL;
             """)
             
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_vpn_slots_order 
+                ON vpn_slots (order_number) WHERE order_number IS NOT NULL;
+            """)
+            
             # Check if slots exist, if not populate initial data
             cursor.execute("SELECT COUNT(*) FROM vpn_slots;")
             count = cursor.fetchone()[0]
@@ -467,3 +472,138 @@ class DatabaseSlotManager:
                 if slot_data.get('order_number') == order_number:
                     return slot_type, slot_id, slot_data
         return None, None, None
+
+
+class OrderBasedSlotManager(DatabaseSlotManager):
+    """Enhanced slot manager with order-number-based file naming"""
+    
+    def __init__(self):
+        super().__init__()
+        self.order_to_slot_mapping = self.load_order_mapping()
+        self.slot_to_order_mapping = {v: k for k, v in self.order_to_slot_mapping.items()}
+    
+    def load_order_mapping(self):
+        """Load order number to slot_id mapping"""
+        mapping = {}
+        
+        # Monthly mapping (slot_id -> 42XXXXXX)
+        for i in range(1, 11):
+            slot_id = f"client_{i:02d}"
+            order_number = f"42{(0x100000 + i):06X}"
+            mapping[slot_id] = order_number
+        
+        # Test mapping (slot_id -> 72XXXXXX)
+        for i in range(1, 11):
+            slot_id = f"test_{i:02d}"
+            order_number = f"72{(0x100000 + i):06X}"
+            mapping[slot_id] = order_number
+        
+        return mapping
+    
+    def get_order_number_for_slot(self, slot_id):
+        """Get the predefined order number for a slot"""
+        return self.order_to_slot_mapping.get(slot_id)
+    
+    def get_slot_for_order_number(self, order_number):
+        """Get the slot_id for a predefined order number"""
+        return self.slot_to_order_mapping.get(order_number)
+    
+    def assign_slot(self, slot_type='monthly', duration_days=30, order_number=None, stripe_session_id=None):
+        """Enhanced slot assignment using predefined order numbers"""
+        if self.use_database:
+            try:
+                conn = self.get_connection()
+                cursor = conn.cursor()
+                
+                # Find available slot
+                cursor.execute("""
+                    SELECT slot_id FROM vpn_slots 
+                    WHERE slot_type = %s AND available = TRUE 
+                    ORDER BY slot_id LIMIT 1
+                    FOR UPDATE
+                """, (slot_type,))
+                
+                result = cursor.fetchone()
+                if not result:
+                    cursor.close()
+                    conn.close()
+                    return None
+                
+                slot_id = result[0]
+                
+                # Use predefined order number for this slot
+                predefined_order = self.get_order_number_for_slot(slot_id)
+                if not predefined_order:
+                    # Fallback to generated order if mapping fails
+                    if slot_type == 'test':
+                        predefined_order = f"72{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
+                    else:
+                        predefined_order = f"42{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
+                
+                # Calculate expiration
+                now = datetime.now()
+                if slot_type == 'test':
+                    expires_at = now + timedelta(minutes=15)
+                else:
+                    expires_at = now + timedelta(days=duration_days)
+                
+                # Update slot with predefined order number
+                cursor.execute("""
+                    UPDATE vpn_slots 
+                    SET available = FALSE, 
+                        assigned_at = %s,
+                        expires_at = %s,
+                        order_number = %s,
+                        stripe_session_id = %s,
+                        updated_at = %s
+                    WHERE slot_id = %s
+                """, (now, expires_at, predefined_order, stripe_session_id, now, slot_id))
+                
+                conn.commit()
+                cursor.close()
+                conn.close()
+                
+                print(f"[DB] ✅ Assigned {slot_type} slot {slot_id} with order: {predefined_order}")
+                return slot_id, predefined_order
+                
+            except Exception as e:
+                print(f"[DB] ❌ Error assigning slot: {e}")
+                return None
+        else:
+            return self.assign_fallback_slot_with_predefined_order(slot_type, duration_days, order_number, stripe_session_id)
+    
+    def assign_fallback_slot_with_predefined_order(self, slot_type, duration_days, order_number, stripe_session_id):
+        """Fallback slot assignment with predefined order numbers"""
+        slots = self.get_fallback_slots()
+        slot_id = self.get_fallback_available_slot(slot_type)
+        
+        if not slot_id:
+            return None
+        
+        # Use predefined order number
+        predefined_order = self.get_order_number_for_slot(slot_id)
+        if not predefined_order:
+            if slot_type == 'test':
+                predefined_order = f"72{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
+            else:
+                predefined_order = f"42{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
+        
+        now = datetime.now()
+        if slot_type == 'test':
+            expires_at = now + timedelta(minutes=15)
+        else:
+            expires_at = now + timedelta(days=duration_days)
+        
+        slots[slot_type][slot_id].update({
+            'available': False,
+            'assigned_at': now.isoformat(),
+            'expires_at': expires_at.isoformat(),
+            'order_number': predefined_order,
+            'stripe_session_id': stripe_session_id
+        })
+        
+        self.fallback_slots = slots
+        self.save_fallback_slots()
+        
+        print(f"[FALLBACK] ✅ Assigned {slot_type} slot {slot_id} with order: {predefined_order}")
+        return slot_id, predefined_order
