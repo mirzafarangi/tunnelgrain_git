@@ -169,13 +169,13 @@ if [ $? -eq 0 ]; then
     
     # Calculate revenue metrics
     monthly_sold=$((10 - monthly_available))
-    revenue=$((monthly_sold * 999))  # in cents
+    revenue=$((monthly_sold * 499))  # in cents
     revenue_dollars=$((revenue / 100))
     
     echo -e "${CYAN}📈 Revenue Status:${NC}"
     echo "   Monthly slots sold: $monthly_sold/10"
     echo "   Current revenue: \$${revenue_dollars}.$(printf "%02d" $((revenue % 100)))"
-    echo "   Potential revenue: \$99.90 (if all sold)"
+    echo "   Potential revenue: \$49.90 (if all sold)"
     echo ""
     echo -e "${CYAN}📊 Slot Availability:${NC}"
     echo "   Monthly available: $monthly_available/10"

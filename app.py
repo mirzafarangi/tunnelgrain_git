@@ -309,7 +309,7 @@ def create_checkout_session():
                         'name': 'Tunnelgrain Monthly VPN',
                         'description': 'Private WireGuard VPN access for 30 days'
                     },
-                    'unit_amount': 999,  # $9.99 in cents
+                    'unit_amount': 499,  # $9.99 in cents
                 },
                 'quantity': 1,
             }],
