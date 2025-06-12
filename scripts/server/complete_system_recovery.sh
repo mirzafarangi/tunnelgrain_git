@@ -65,7 +65,7 @@ for i in $(seq 1 10); do
     SLOT_ID="client_$(printf "%02d" $i)"
     CLIENT_IP="10.0.0.$((i + 1))"
     
-    # Config file named with ORDER NUMBER
+    # ✅ FIX: Config file named with ORDER NUMBER (not slot_id)
     config_file="$CONFIG_DIR/monthly/${ORDER_NUMBER}.conf"
     qr_file="$QR_DIR/${ORDER_NUMBER}.png"
     
@@ -105,7 +105,7 @@ for i in $(seq 1 10); do
     SLOT_ID="test_$(printf "%02d" $i)"
     CLIENT_IP="10.0.0.$((i + 20))"
     
-    # Config file named with ORDER NUMBER
+    # ✅ FIX: Config file named with ORDER NUMBER (not slot_id)
     config_file="$CONFIG_DIR/test/${ORDER_NUMBER}.conf"
     qr_file="$QR_DIR/${ORDER_NUMBER}.png"
     
@@ -139,13 +139,6 @@ EOF
 done
 
 echo -e "${YELLOW}📋 Step 5: Build Clean Server Config${NC}"
-
-# Function to extract public key from config
-get_public_key() {
-    local config_file="$1"
-    local private_key=$(grep "PrivateKey" "$config_file" | awk '{print $3}')
-    echo "$private_key" | wg pubkey
-}
 
 # Build server configuration with ORDER NUMBERS in comments
 server_config="[Interface]
@@ -228,9 +221,13 @@ ARCHIVE_DIR="/root/archives/test_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$ARCHIVE_DIR"
 if [ -d "$CONFIG_DIR/test" ]; then
     cp -r "$CONFIG_DIR/test"/* "$ARCHIVE_DIR/" 2>/dev/null || true
-    cp "$QR_DIR"/72*.png "$ARCHIVE_DIR/" 2>/dev/null || true  # Changed to match order numbers
+    cp "$QR_DIR"/72*.png "$ARCHIVE_DIR/" 2>/dev/null || true
     log "✅ Archived old test configs to $ARCHIVE_DIR"
 fi
+
+# Remove old test configs (ORDER-BASED cleanup)
+rm -f "$CONFIG_DIR/test"/72*.conf
+rm -f "$QR_DIR"/72*.png
 
 # Generate new test configs with ORDER NUMBERS
 for i in $(seq 1 10); do
@@ -238,7 +235,7 @@ for i in $(seq 1 10); do
     SLOT_ID="test_$(printf "%02d" $i)"
     CLIENT_IP="10.0.0.$((i + 20))"
     
-    # Config file named with ORDER NUMBER
+    # ✅ FIX: Config file named with ORDER NUMBER
     config_file="$CONFIG_DIR/test/${ORDER_NUMBER}.conf"
     qr_file="$QR_DIR/${ORDER_NUMBER}.png"
     
@@ -291,11 +288,11 @@ PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACC
 
 "
 
-# Add monthly clients (these never change)
+# Add monthly clients (these never change) - ORDER-BASED FILES
 for i in $(seq 1 10); do
     monthly_order="42$(printf "%06X" $((0x100000 + i)))"
     slot_id="client_$(printf "%02d" $i)"
-    config_file="$CONFIG_DIR/monthly/${monthly_order}.conf"
+    config_file="$CONFIG_DIR/monthly/${monthly_order}.conf"  # ✅ FIX: Use ORDER NUMBER
     client_ip="10.0.0.$((i + 1))"
     client_public=$(get_public_key "$config_file")
     
@@ -369,6 +366,7 @@ echo ""
 echo "File Examples:"
 echo "Monthly: $(ls /root/configs/monthly/ | head -3 | xargs)"
 echo "Test: $(ls /root/configs/test/ | head -3 | xargs)"
+echo "QR Examples: $(ls /root/qr_codes/ | head -3 | xargs)"
 STATUS_EOF
 
 chmod +x /root/check_status.sh
@@ -383,6 +381,11 @@ echo -e "${BLUE}📋 File Structure Created:${NC}"
 echo "Monthly configs: 42100001.conf to 4210000A.conf"
 echo "Test configs: 72100001.conf to 7210000A.conf"
 echo "QR codes: Same naming as configs but .png"
+echo ""
+echo -e "${BLUE}📋 Verification Commands:${NC}"
+echo "ls -la /root/configs/monthly/    # Should show 42*.conf files"
+echo "ls -la /root/configs/test/       # Should show 72*.conf files"
+echo "ls -la /root/qr_codes/           # Should show 42*.png and 72*.png files"
 echo ""
 echo -e "${BLUE}📋 Next Steps:${NC}"
 echo "1. Run: /root/check_status.sh (verify everything works)"
