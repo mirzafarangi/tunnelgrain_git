@@ -10,6 +10,7 @@ import uuid
 import hashlib
 from functools import wraps
 from collections import defaultdict
+from database_manager import DatabaseSlotManager
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
@@ -201,7 +202,7 @@ class SlotManager:
                     return slot_type, slot_id, slot_data
         return None, None, None
 
-slot_manager = SlotManager()
+slot_manager = DatabaseSlotManager()
 
 # Main routes
 @app.route('/')
