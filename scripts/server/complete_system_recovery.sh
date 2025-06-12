@@ -15,8 +15,8 @@ echo "This script will clean and rebuild your entire VPN system with order-based
 echo ""
 
 # Server configuration
-SERVER_PRIVATE_KEY="0Ac9E5xwq75N34QhRUytVzDuGAZopnczeWv7ldJVrHw="
-SERVER_PUBLIC_KEY="kYrikmdCzYOhM4R+A6LVnh6f0y3XPAfuPLNEaoExN30="
+SERVER_PRIVATE_KEY="WHiWHa/bR9i8uIaQ9Hcln+angcl9cVfQBxjBZ0wptFc="
+SERVER_PUBLIC_KEY="gWJ+k9yV83ByDSXRIB6w+WKBDHqSGyCIT+e5aFaWY2Q="
 SERVER_ENDPOINT="213.170.133.116:51820"
 
 # Directories
