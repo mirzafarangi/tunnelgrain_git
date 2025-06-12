@@ -88,120 +88,7 @@ def check_test_vpn_abuse(request):
     
     return True, f"Test VPN granted. {3 - len(test_usage_tracker[fingerprint])} remaining today."
 
-# Enhanced Slot management
-class SlotManager:
-    def __init__(self):
-        self.slots_file = SLOTS_FILE
-        self.load_slots()
-    
-    def load_slots(self):
-        if os.path.exists(self.slots_file):
-            with open(self.slots_file, 'r') as f:
-                self.slots = json.load(f)
-        else:
-            # Initialize slots
-            self.slots = {
-                'monthly': {f'client_{i:02d}': {
-                    'available': True, 
-                    'assigned_at': None, 
-                    'expires_at': None,
-                    'order_number': None,
-                    'slot_type': 'monthly',
-                    'auto_managed': True
-                } for i in range(1, 11)},
-                'test': {f'test_{i:02d}': {
-                    'available': True, 
-                    'assigned_at': None, 
-                    'expires_at': None,
-                    'order_number': None,
-                    'slot_type': 'test',
-                    'auto_managed': True
-                } for i in range(1, 11)}
-            }
-            self.save_slots()
-    
-    def save_slots(self):
-        with open(self.slots_file, 'w') as f:
-            json.dump(self.slots, f, indent=2)
-    
-    def get_available_slot(self, slot_type='monthly'):
-        """Get next available slot"""
-        for slot_id, slot_data in self.slots[slot_type].items():
-            if slot_data['available']:
-                return slot_id
-        return None
-    
-    def assign_slot(self, slot_type='monthly', duration_days=30, order_number=None, stripe_session_id=None):
-        """Enhanced slot assignment with better tracking"""
-        slot_id = self.get_available_slot(slot_type)
-        if not slot_id:
-            return None
-        
-        now = datetime.now()
-        if slot_type == 'test':
-            expires_at = now + timedelta(minutes=15)
-        else:
-            expires_at = now + timedelta(days=duration_days)
-        
-        # Generate order number if not provided
-        if not order_number:
-            order_number = generate_order_number()
-        
-        self.slots[slot_type][slot_id].update({
-            'available': False,
-            'assigned_at': now.isoformat(),
-            'expires_at': expires_at.isoformat(),
-            'order_number': order_number,
-            'slot_type': slot_type,
-            'duration_days': duration_days if slot_type == 'monthly' else 0,
-            'auto_managed': True,
-            'stripe_session_id': stripe_session_id  # NEW: Track Stripe session
-        })
-        self.save_slots()
-        
-        # Log assignment for tracking
-        print(f"[SLOT] Assigned {slot_type} slot {slot_id}, order: {order_number}, expires: {expires_at}")
-        
-        return slot_id, order_number
-    
-    def release_slot(self, slot_type, slot_id):
-        """Release a slot back to available pool"""
-        if slot_id in self.slots[slot_type]:
-            self.slots[slot_type][slot_id].update({
-                'available': True,
-                'assigned_at': None,
-                'expires_at': None,
-                'order_number': None
-            })
-            self.save_slots()
-    
-    def cleanup_expired_slots(self):
-        """Enhanced cleanup with logging"""
-        now = datetime.now()
-        cleaned_slots = []
-        
-        for slot_type in ['monthly', 'test']:
-            for slot_id, slot_data in self.slots[slot_type].items():
-                if not slot_data['available'] and slot_data.get('expires_at'):
-                    try:
-                        expires_at = datetime.fromisoformat(slot_data['expires_at'])
-                        if now > expires_at:
-                            self.release_slot(slot_type, slot_id)
-                            cleaned_slots.append(f"{slot_type}:{slot_id}")
-                            print(f"[SLOT] Auto-released expired slot {slot_type}:{slot_id}")
-                    except (ValueError, TypeError) as e:
-                        print(f"[SLOT] Error parsing expiration for {slot_id}: {e}")
-        
-        return cleaned_slots
-    
-    def find_slot_by_order(self, order_number):
-        """Find slot by order number"""
-        for slot_type in ['monthly', 'test']:
-            for slot_id, slot_data in self.slots[slot_type].items():
-                if slot_data.get('order_number') == order_number:
-                    return slot_type, slot_id, slot_data
-        return None, None, None
-
+# Initialize DatabaseSlotManager
 slot_manager = DatabaseSlotManager()
 
 # Main routes
@@ -310,7 +197,7 @@ def create_checkout_session():
                         'name': 'Tunnelgrain Monthly VPN',
                         'description': 'Private WireGuard VPN access for 30 days'
                     },
-                    'unit_amount': 499,  # $9.99 in cents
+                    'unit_amount': 499,  # $4.99 in cents
                 },
                 'quantity': 1,
             }],
@@ -329,7 +216,7 @@ def create_checkout_session():
 
 @app.route('/payment-success')
 def payment_success():
-    """Handle successful payment with order tracking - FIXED VERSION"""
+    """Handle successful payment with order tracking - DATABASE VERSION"""
     session_id = request.args.get('session_id')
     
     if not session_id:
@@ -342,7 +229,7 @@ def payment_success():
         if checkout_session.payment_status != 'paid':
             return "Payment not completed", 400
         
-        # CHECK IF WE ALREADY PROCESSED THIS PAYMENT SESSION
+        # CHECK IF WE ALREADY PROCESSED THIS PAYMENT SESSION (Flask session)
         if 'monthly_slot' in session and session.get('payment_session') == session_id:
             # Already processed - just show the success page
             slot_id = session['monthly_slot']
@@ -352,9 +239,9 @@ def payment_success():
                                  slot_id=slot_id, 
                                  order_number=order_number)
         
-        # CHECK IF PAYMENT SESSION ALREADY USED (server-side check)
-        # Look for existing slot with this session_id in metadata
-        for slot_id, slot_data in slot_manager.slots['monthly'].items():
+        # CHECK DATABASE FOR EXISTING PAYMENT SESSION
+        slots = slot_manager.get_slots()
+        for slot_id, slot_data in slots['monthly'].items():
             if slot_data.get('stripe_session_id') == session_id:
                 # This payment was already processed!
                 print(f"[PAYMENT] Session {session_id} already processed for slot {slot_id}")
@@ -374,10 +261,6 @@ def payment_success():
         if result:
             slot_id, order_number = result
             
-            # MARK THIS SLOT WITH THE STRIPE SESSION ID
-            slot_manager.slots['monthly'][slot_id]['stripe_session_id'] = session_id
-            slot_manager.save_slots()
-            
             # Store in session for download access
             session['monthly_slot'] = slot_id
             session['payment_session'] = session_id
@@ -394,7 +277,6 @@ def payment_success():
     except Exception as e:
         print(f"[PAYMENT] Error processing payment: {str(e)}")
         return f"Error processing payment: {str(e)}", 500
-
 
 @app.route('/download-monthly-config')
 def download_monthly_config():
@@ -482,7 +364,7 @@ def check_order():
 def admin():
     """Secure admin panel to view slot status"""
     slot_manager.cleanup_expired_slots()
-    return render_template('admin.html', slots=slot_manager.slots)
+    return render_template('admin.html', slots=slot_manager.get_slots())
 
 # API endpoints
 @app.route('/api/slot-status')
@@ -490,8 +372,9 @@ def slot_status():
     """API endpoint for slot availability"""
     slot_manager.cleanup_expired_slots()
     
-    monthly_available = sum(1 for slot in slot_manager.slots['monthly'].values() if slot['available'])
-    test_available = sum(1 for slot in slot_manager.slots['test'].values() if slot['available'])
+    slots = slot_manager.get_slots()
+    monthly_available = sum(1 for slot in slots['monthly'].values() if slot['available'])
+    test_available = sum(1 for slot in slots['test'].values() if slot['available'])
     
     return jsonify({
         'monthly_available': monthly_available,
@@ -508,13 +391,15 @@ def active_slots():
     active_monthly = []
     active_test = []
     
+    slots = slot_manager.get_slots()
+    
     # Get active monthly slots
-    for slot_id, slot_data in slot_manager.slots['monthly'].items():
+    for slot_id, slot_data in slots['monthly'].items():
         if not slot_data['available']:  # Slot is assigned/active
             active_monthly.append(slot_id)
     
     # Get active test slots
-    for slot_id, slot_data in slot_manager.slots['test'].items():
+    for slot_id, slot_data in slots['test'].items():
         if not slot_data['available']:  # Slot is assigned/active
             active_test.append(slot_id)
     
@@ -529,16 +414,18 @@ def active_slots():
 @admin_required
 def force_cleanup():
     """Force cleanup of expired slots - for manual management"""
+    slots = slot_manager.get_slots()
     before_cleanup = {
-        'monthly': len([s for s in slot_manager.slots['monthly'].values() if not s['available']]),
-        'test': len([s for s in slot_manager.slots['test'].values() if not s['available']])
+        'monthly': len([s for s in slots['monthly'].values() if not s['available']]),
+        'test': len([s for s in slots['test'].values() if not s['available']])
     }
     
     cleaned_slots = slot_manager.cleanup_expired_slots()
     
+    slots = slot_manager.get_slots()
     after_cleanup = {
-        'monthly': len([s for s in slot_manager.slots['monthly'].values() if not s['available']]),
-        'test': len([s for s in slot_manager.slots['test'].values() if not s['available']])
+        'monthly': len([s for s in slots['monthly'].values() if not s['available']]),
+        'test': len([s for s in slots['test'].values() if not s['available']])
     }
     
     return jsonify({
@@ -599,6 +486,8 @@ def deployment_info():
         'slots_json_size': os.path.getsize('slots.json') if os.path.exists('slots.json') else 0,
         'data_dir_exists': os.path.exists('data'),
         'static_dir_exists': os.path.exists('static'),
+        'database_url_set': bool(os.environ.get('DATABASE_URL')),
+        'slot_manager_type': type(slot_manager).__name__,
         'environment_vars': {
             'RENDER': os.environ.get('RENDER', 'Not set'),
             'NODE_ENV': os.environ.get('NODE_ENV', 'Not set'),
@@ -613,19 +502,17 @@ def deployment_info():
             'test': os.listdir('data/test') if os.path.exists('data/test') else []
         }
     
-    # Check slots.json content if exists
-    if os.path.exists('slots.json'):
-        try:
-            with open('slots.json', 'r') as f:
-                slots_data = json.load(f)
-                debug_info['slots_summary'] = {
-                    'monthly_available': sum(1 for slot in slots_data.get('monthly', {}).values() if slot.get('available', True)),
-                    'test_available': sum(1 for slot in slots_data.get('test', {}).values() if slot.get('available', True)),
-                    'total_monthly': len(slots_data.get('monthly', {})),
-                    'total_test': len(slots_data.get('test', {}))
-                }
-        except Exception as e:
-            debug_info['slots_json_error'] = str(e)
+    # Check current slots via slot manager
+    try:
+        slots = slot_manager.get_slots()
+        debug_info['slots_summary'] = {
+            'monthly_available': sum(1 for slot in slots.get('monthly', {}).values() if slot.get('available', True)),
+            'test_available': sum(1 for slot in slots.get('test', {}).values() if slot.get('available', True)),
+            'total_monthly': len(slots.get('monthly', {})),
+            'total_test': len(slots.get('test', {}))
+        }
+    except Exception as e:
+        debug_info['slots_error'] = str(e)
     
     return f"""
     <html>
@@ -636,11 +523,10 @@ def deployment_info():
 {json.dumps(debug_info, indent=2, default=str)}
         </pre>
         <hr>
-        <p><strong>Next Steps:</strong></p>
+        <p><strong>Status:</strong></p>
         <ul>
-            <li>If slots.json doesn't exist: Add it to your repository</li>
-            <li>If files are missing: Check your git repository</li>
-            <li>If data persists across deploys: You need a database solution</li>
+            <li>Slot Manager: {type(slot_manager).__name__}</li>
+            <li>Database Available: {'Yes' if os.environ.get('DATABASE_URL') else 'No (using fallback)'}</li>
         </ul>
         <p><a href="/">← Back to Home</a></p>
     </body>
