@@ -368,7 +368,7 @@ def payment_success():
                                      order_number=slot_data['order_number'])
         
         # FIRST TIME PROCESSING THIS PAYMENT - ASSIGN NEW SLOT
-        result = slot_manager.assign_slot('monthly', duration_days=30)
+        result = slot_manager.assign_slot('monthly', duration_days=30, stripe_session_id=session_id)
         
         if result:
             slot_id, order_number = result
