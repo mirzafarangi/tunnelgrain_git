@@ -130,7 +130,7 @@ class SlotManager:
                 return slot_id
         return None
     
-    def assign_slot(self, slot_type='monthly', duration_days=30, order_number=None):
+    def assign_slot(self, slot_type='monthly', duration_days=30, order_number=None, stripe_session_id=None):
         """Enhanced slot assignment with better tracking"""
         slot_id = self.get_available_slot(slot_type)
         if not slot_id:
@@ -153,7 +153,8 @@ class SlotManager:
             'order_number': order_number,
             'slot_type': slot_type,
             'duration_days': duration_days if slot_type == 'monthly' else 0,
-            'auto_managed': True
+            'auto_managed': True,
+            'stripe_session_id': stripe_session_id  # NEW: Track Stripe session
         })
         self.save_slots()
         
@@ -393,40 +394,6 @@ def payment_success():
         print(f"[PAYMENT] Error processing payment: {str(e)}")
         return f"Error processing payment: {str(e)}", 500
 
-
-# ALSO UPDATE the assign_slot method in SlotManager class:
-def assign_slot(self, slot_type='monthly', duration_days=30, order_number=None, stripe_session_id=None):
-    """Enhanced slot assignment with better tracking"""
-    slot_id = self.get_available_slot(slot_type)
-    if not slot_id:
-        return None
-    
-    now = datetime.now()
-    if slot_type == 'test':
-        expires_at = now + timedelta(minutes=15)
-    else:
-        expires_at = now + timedelta(days=duration_days)
-    
-    # Generate order number if not provided
-    if not order_number:
-        order_number = generate_order_number()
-    
-    self.slots[slot_type][slot_id].update({
-        'available': False,
-        'assigned_at': now.isoformat(),
-        'expires_at': expires_at.isoformat(),
-        'order_number': order_number,
-        'slot_type': slot_type,
-        'duration_days': duration_days if slot_type == 'monthly' else 0,
-        'auto_managed': True,
-        'stripe_session_id': stripe_session_id  # NEW: Track Stripe session
-    })
-    self.save_slots()
-    
-    # Log assignment for tracking
-    print(f"[SLOT] Assigned {slot_type} slot {slot_id}, order: {order_number}, expires: {expires_at}")
-    
-    return slot_id, order_number
 
 @app.route('/download-monthly-config')
 def download_monthly_config():
