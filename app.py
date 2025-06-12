@@ -583,6 +583,69 @@ def abuse_stats():
         'timestamp': now.isoformat()
     })
 
+@app.route('/debug/deployment-info')
+def deployment_info():
+    """Debug endpoint to check deployment state"""
+    import os
+    import json
+    from datetime import datetime
+    
+    debug_info = {
+        'timestamp': datetime.now().isoformat(),
+        'working_directory': os.getcwd(),
+        'files_in_root': os.listdir('.'),
+        'slots_json_exists': os.path.exists('slots.json'),
+        'slots_json_size': os.path.getsize('slots.json') if os.path.exists('slots.json') else 0,
+        'data_dir_exists': os.path.exists('data'),
+        'static_dir_exists': os.path.exists('static'),
+        'environment_vars': {
+            'RENDER': os.environ.get('RENDER', 'Not set'),
+            'NODE_ENV': os.environ.get('NODE_ENV', 'Not set'),
+            'PYTHON_VERSION': os.environ.get('PYTHON_VERSION', 'Not set')
+        }
+    }
+    
+    # Check data directory contents
+    if os.path.exists('data'):
+        debug_info['data_contents'] = {
+            'monthly': os.listdir('data/monthly') if os.path.exists('data/monthly') else [],
+            'test': os.listdir('data/test') if os.path.exists('data/test') else []
+        }
+    
+    # Check slots.json content if exists
+    if os.path.exists('slots.json'):
+        try:
+            with open('slots.json', 'r') as f:
+                slots_data = json.load(f)
+                debug_info['slots_summary'] = {
+                    'monthly_available': sum(1 for slot in slots_data.get('monthly', {}).values() if slot.get('available', True)),
+                    'test_available': sum(1 for slot in slots_data.get('test', {}).values() if slot.get('available', True)),
+                    'total_monthly': len(slots_data.get('monthly', {})),
+                    'total_test': len(slots_data.get('test', {}))
+                }
+        except Exception as e:
+            debug_info['slots_json_error'] = str(e)
+    
+    return f"""
+    <html>
+    <head><title>Deployment Debug Info</title></head>
+    <body style="font-family: monospace; background: #f5f5f5; padding: 20px;">
+        <h2>🔍 Deployment Debug Information</h2>
+        <pre style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto;">
+{json.dumps(debug_info, indent=2, default=str)}
+        </pre>
+        <hr>
+        <p><strong>Next Steps:</strong></p>
+        <ul>
+            <li>If slots.json doesn't exist: Add it to your repository</li>
+            <li>If files are missing: Check your git repository</li>
+            <li>If data persists across deploys: You need a database solution</li>
+        </ul>
+        <p><a href="/">← Back to Home</a></p>
+    </body>
+    </html>
+    """
+
 if __name__ == '__main__':
     # Create directories if they don't exist
     os.makedirs(MONTHLY_DIR, exist_ok=True)
