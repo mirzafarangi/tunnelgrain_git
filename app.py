@@ -327,7 +327,7 @@ def create_checkout_session():
 
 @app.route('/payment-success')
 def payment_success():
-    """Handle successful payment with order tracking"""
+    """Handle successful payment with order tracking - FIXED VERSION"""
     session_id = request.args.get('session_id')
     
     if not session_id:
@@ -337,28 +337,96 @@ def payment_success():
         # Retrieve the session from Stripe
         checkout_session = stripe.checkout.Session.retrieve(session_id)
         
-        if checkout_session.payment_status == 'paid':
-            # Assign VPN slot with order number
-            result = slot_manager.assign_slot('monthly', duration_days=30)
-            
-            if result:
-                slot_id, order_number = result
+        if checkout_session.payment_status != 'paid':
+            return "Payment not completed", 400
+        
+        # CHECK IF WE ALREADY PROCESSED THIS PAYMENT SESSION
+        if 'monthly_slot' in session and session.get('payment_session') == session_id:
+            # Already processed - just show the success page
+            slot_id = session['monthly_slot']
+            order_number = session['order_number']
+            print(f"[PAYMENT] Returning existing slot {slot_id} for session {session_id}")
+            return render_template('payment_success.html', 
+                                 slot_id=slot_id, 
+                                 order_number=order_number)
+        
+        # CHECK IF PAYMENT SESSION ALREADY USED (server-side check)
+        # Look for existing slot with this session_id in metadata
+        for slot_id, slot_data in slot_manager.slots['monthly'].items():
+            if slot_data.get('stripe_session_id') == session_id:
+                # This payment was already processed!
+                print(f"[PAYMENT] Session {session_id} already processed for slot {slot_id}")
                 
-                # Store in session
+                # Store in current session for download access
                 session['monthly_slot'] = slot_id
                 session['payment_session'] = session_id
-                session['order_number'] = order_number
+                session['order_number'] = slot_data['order_number']
                 
                 return render_template('payment_success.html', 
                                      slot_id=slot_id, 
-                                     order_number=order_number)
-            else:
-                return "No slots available - contact support", 503
+                                     order_number=slot_data['order_number'])
+        
+        # FIRST TIME PROCESSING THIS PAYMENT - ASSIGN NEW SLOT
+        result = slot_manager.assign_slot('monthly', duration_days=30)
+        
+        if result:
+            slot_id, order_number = result
+            
+            # MARK THIS SLOT WITH THE STRIPE SESSION ID
+            slot_manager.slots['monthly'][slot_id]['stripe_session_id'] = session_id
+            slot_manager.save_slots()
+            
+            # Store in session for download access
+            session['monthly_slot'] = slot_id
+            session['payment_session'] = session_id
+            session['order_number'] = order_number
+            
+            print(f"[PAYMENT] NEW assignment: slot {slot_id}, order {order_number}, session {session_id}")
+            
+            return render_template('payment_success.html', 
+                                 slot_id=slot_id, 
+                                 order_number=order_number)
         else:
-            return "Payment not completed", 400
+            return "No slots available - contact support", 503
             
     except Exception as e:
+        print(f"[PAYMENT] Error processing payment: {str(e)}")
         return f"Error processing payment: {str(e)}", 500
+
+
+# ALSO UPDATE the assign_slot method in SlotManager class:
+def assign_slot(self, slot_type='monthly', duration_days=30, order_number=None, stripe_session_id=None):
+    """Enhanced slot assignment with better tracking"""
+    slot_id = self.get_available_slot(slot_type)
+    if not slot_id:
+        return None
+    
+    now = datetime.now()
+    if slot_type == 'test':
+        expires_at = now + timedelta(minutes=15)
+    else:
+        expires_at = now + timedelta(days=duration_days)
+    
+    # Generate order number if not provided
+    if not order_number:
+        order_number = generate_order_number()
+    
+    self.slots[slot_type][slot_id].update({
+        'available': False,
+        'assigned_at': now.isoformat(),
+        'expires_at': expires_at.isoformat(),
+        'order_number': order_number,
+        'slot_type': slot_type,
+        'duration_days': duration_days if slot_type == 'monthly' else 0,
+        'auto_managed': True,
+        'stripe_session_id': stripe_session_id  # NEW: Track Stripe session
+    })
+    self.save_slots()
+    
+    # Log assignment for tracking
+    print(f"[SLOT] Assigned {slot_type} slot {slot_id}, order: {order_number}, expires: {expires_at}")
+    
+    return slot_id, order_number
 
 @app.route('/download-monthly-config')
 def download_monthly_config():
