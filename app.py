@@ -10,7 +10,7 @@ import uuid
 import hashlib
 from functools import wraps
 from collections import defaultdict
-from complete_database_manager import EnhancedVPNManager
+from database_manager import EnhancedVPNManager
 import logging
 from dotenv import load_dotenv
 
