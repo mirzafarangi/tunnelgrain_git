@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Tunnelgrain - Professional VPN Service{% endblock %}
+{% block title %}Tunnelgrain - Professional Multi-Tier VPN Service{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->
@@ -11,18 +11,18 @@
                 <div class="col-lg-8 mx-auto">
                     <h1 class="display-4 fw-bold mb-4">
                         Professional VPN Access
-                        <span class="d-block text-warning">Starting at $4.99</span>
+                        <span class="d-block text-warning">Multiple Plans Available</span>
                     </h1>
                     <p class="lead mb-5 opacity-90">
-                        Enterprise-grade WireGuard VPN service for individuals who value privacy and performance. 
-                        Secure your connection with military-grade encryption and blazing-fast speeds.
+                        Enterprise-grade WireGuard VPN service with flexible duration options. 
+                        Choose from multiple server IPs and subscription lengths to fit your needs.
                     </p>
                     
                     <div class="d-flex gap-3 justify-content-center flex-wrap mb-4">
-                        <button class="btn-primary-custom btn-lg" onclick="purchaseVPN()">
-                            <i class="fas fa-credit-card me-2"></i>
-                            Get Monthly Access - $4.99
-                        </button>
+                        <a href="{{ url_for('order') }}" class="btn-primary-custom btn-lg">
+                            <i class="fas fa-shopping-cart me-2"></i>
+                            Browse All Plans
+                        </a>
                         <a href="{{ url_for('test') }}" class="btn-outline-custom btn-lg">
                             <i class="fas fa-flask me-2"></i>
                             Try 15-Minute Demo
@@ -30,19 +30,27 @@
                     </div>
                     
                     <div class="row text-center">
-                        <div class="col-md-6 mb-2">
+                        <div class="col-md-4 mb-2">
                             <div id="monthly-status">
                                 <div class="status-indicator status-online">
                                     <span class="status-dot online"></span>
-                                    Loading monthly slots...
+                                    Loading availability...
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-2">
+                        <div class="col-md-4 mb-2">
                             <div id="test-status">
                                 <div class="status-indicator status-online">
                                     <span class="status-dot online"></span>
                                     Loading test slots...
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <div id="total-ips">
+                                <div class="status-indicator status-online">
+                                    <span class="status-dot online"></span>
+                                    Multiple server IPs
                                 </div>
                             </div>
                         </div>
@@ -53,8 +61,106 @@
     </div>
 </section>
 
-<!-- Features Section -->
+<!-- Pricing Preview Section -->
 <section class="section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Choose Your Plan</h2>
+            <p class="section-subtitle">Flexible pricing options for every privacy need</p>
+        </div>
+        
+        <div class="row g-4">
+            <!-- Test Plan -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card-pricing p-4 text-center h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-flask text-success" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">{{ service_tiers.test.name }}</h4>
+                    <div class="mb-3">
+                        <span class="display-6 fw-bold text-success">FREE</span>
+                    </div>
+                    <p class="text-muted mb-4">{{ service_tiers.test.description }}</p>
+                    
+                    <ul class="feature-list mb-4">
+                        <li><i class="fas fa-check"></i>15 minutes full access</li>
+                        <li><i class="fas fa-check"></i>All features enabled</li>
+                        <li><i class="fas fa-check"></i>Multiple device support</li>
+                        <li><i class="fas fa-check"></i>No registration required</li>
+                    </ul>
+                    
+                    <a href="{{ url_for('test') }}" class="btn-secondary-custom w-100">
+                        <i class="fas fa-play me-2"></i>Start Free Test
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Monthly Plan -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card-pricing p-4 text-center h-100 position-relative">
+                    <div class="pricing-badge">Most Popular</div>
+                    
+                    <div class="mb-3">
+                        <i class="fas fa-calendar-alt text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">{{ service_tiers.monthly.name }}</h4>
+                    <div class="mb-3">
+                        <span class="display-6 fw-bold text-primary">${{ "%.2f"|format(service_tiers.monthly.price_cents / 100) }}</span>
+                        <span class="text-muted">/month</span>
+                    </div>
+                    <p class="text-muted mb-4">{{ service_tiers.monthly.description }}</p>
+                    
+                    <ul class="feature-list mb-4">
+                        <li><i class="fas fa-check"></i>30 days unlimited access</li>
+                        <li><i class="fas fa-check"></i>Multiple server IPs</li>
+                        <li><i class="fas fa-check"></i>All devices supported</li>
+                        <li><i class="fas fa-check"></i>Technical support</li>
+                    </ul>
+                    
+                    <a href="{{ url_for('order') }}" class="btn-primary-custom w-100">
+                        <i class="fas fa-shopping-cart me-2"></i>Choose Plan
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Lifetime Plan -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card-pricing p-4 text-center h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-infinity text-warning" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">{{ service_tiers.lifetime.name }}</h4>
+                    <div class="mb-3">
+                        <span class="display-6 fw-bold text-warning">${{ "%.2f"|format(service_tiers.lifetime.price_cents / 100) }}</span>
+                        <span class="text-muted">/lifetime</span>
+                    </div>
+                    <p class="text-muted mb-4">{{ service_tiers.lifetime.description }}</p>
+                    
+                    <ul class="feature-list mb-4">
+                        <li><i class="fas fa-check"></i>Lifetime unlimited access</li>
+                        <li><i class="fas fa-check"></i>Premium server selection</li>
+                        <li><i class="fas fa-check"></i>Priority technical support</li>
+                        <li><i class="fas fa-check"></i>Future feature access</li>
+                    </ul>
+                    
+                    <a href="{{ url_for('order') }}" class="btn-secondary-custom w-100">
+                        <i class="fas fa-crown me-2"></i>Go Premium
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-5">
+            <a href="{{ url_for('pricing') }}" class="btn-outline-custom">
+                <i class="fas fa-list me-2"></i>
+                View All Plans & Pricing
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="section-padding">
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="section-title">Why Choose Tunnelgrain?</h2>
@@ -65,12 +171,38 @@
             <div class="col-lg-4 col-md-6">
                 <div class="card-modern p-4 h-100 text-center">
                     <div class="mb-3">
-                        <i class="fas fa-shield-alt text-primary" style="font-size: 3rem;"></i>
+                        <i class="fas fa-server text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Multiple Server IPs</h5>
+                    <p class="text-muted">
+                        Choose from multiple server IPs across different locations. 
+                        Select the best performing server for your specific needs.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card-modern p-4 h-100 text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-clock text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Flexible Duration</h5>
+                    <p class="text-muted">
+                        From 15-minute tests to lifetime access. Choose the duration 
+                        that fits your privacy needs and budget perfectly.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card-modern p-4 h-100 text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-shield-alt text-warning" style="font-size: 3rem;"></i>
                     </div>
                     <h5 class="fw-bold mb-3">Military-Grade Security</h5>
                     <p class="text-muted">
-                        Advanced WireGuard protocol with AES-256 encryption. 
-                        Your data is protected with the same technology used by governments and enterprises.
+                        Advanced WireGuard protocol with state-of-the-art encryption. 
+                        Your data is protected with enterprise-level security.
                     </p>
                 </div>
             </div>
@@ -78,12 +210,12 @@
             <div class="col-lg-4 col-md-6">
                 <div class="card-modern p-4 h-100 text-center">
                     <div class="mb-3">
-                        <i class="fas fa-bolt text-warning" style="font-size: 3rem;"></i>
+                        <i class="fas fa-bolt text-danger" style="font-size: 3rem;"></i>
                     </div>
                     <h5 class="fw-bold mb-3">Lightning Performance</h5>
                     <p class="text-muted">
-                        High-performance servers optimized for speed. Stream, game, and browse 
-                        without slowdowns or buffering interruptions.
+                        High-performance servers optimized for speed. Stream, game, 
+                        and browse without slowdowns or buffering interruptions.
                     </p>
                 </div>
             </div>
@@ -91,7 +223,7 @@
             <div class="col-lg-4 col-md-6">
                 <div class="card-modern p-4 h-100 text-center">
                     <div class="mb-3">
-                        <i class="fas fa-eye-slash text-success" style="font-size: 3rem;"></i>
+                        <i class="fas fa-eye-slash text-info" style="font-size: 3rem;"></i>
                     </div>
                     <h5 class="fw-bold mb-3">Zero-Log Policy</h5>
                     <p class="text-muted">
@@ -100,71 +232,17 @@
                     </p>
                 </div>
             </div>
-        </div>
-    </div>
-</section>
-
-<!-- Pricing Section -->
-<section class="section-padding">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="section-title">Simple, Transparent Pricing</h2>
-            <p class="section-subtitle">No hidden fees, no automatic renewals, no complexity</p>
-        </div>
-        
-        <div class="row justify-content-center">
-            <div class="col-lg-5 col-md-8">
-                <div class="card-pricing p-4 text-center position-relative">
-                    <div class="pricing-badge">Most Popular</div>
-                    
-                    <div class="mb-4">
-                        <h3 class="h4 fw-bold mb-3 text-primary">Monthly VPN Access</h3>
-                        <div class="mb-3">
-                            <span class="display-4 fw-bold text-dark">$4.99</span>
-                            <span class="text-muted fs-5">/month</span>
-                        </div>
-                        <p class="text-muted">
-                            One-time payment for 30 days of unlimited VPN access. 
-                            No subscriptions, no auto-renewal.
-                        </p>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card-modern p-4 h-100 text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-mobile-alt text-secondary" style="font-size: 3rem;"></i>
                     </div>
-                    
-                    <ul class="feature-list mb-4">
-                        <li>
-                            <i class="fas fa-check"></i>
-                            30 days of unlimited access
-                        </li>
-                        <li>
-                            <i class="fas fa-check"></i>
-                            WireGuard protocol encryption
-                        </li>
-                        <li>
-                            <i class="fas fa-check"></i>
-                            Works on all devices
-                        </li>
-                        <li>
-                            <i class="fas fa-check"></i>
-                            High-speed server access
-                        </li>
-                        <li>
-                            <i class="fas fa-check"></i>
-                            No activity logging
-                        </li>
-                        <li>
-                            <i class="fas fa-check"></i>
-                            Technical support included
-                        </li>
-                    </ul>
-                    
-                    <button class="btn-primary-custom btn-lg w-100 mb-3" onclick="purchaseVPN()">
-                        <i class="fas fa-lock me-2"></i>
-                        Secure Purchase
-                    </button>
-                    
-                    <div class="d-flex justify-content-center align-items-center text-muted">
-                        <i class="fab fa-cc-stripe me-2"></i>
-                        <small>Secured by Stripe</small>
-                    </div>
+                    <h5 class="fw-bold mb-3">Universal Compatibility</h5>
+                    <p class="text-muted">
+                        Works on all devices: Windows, Mac, Linux, iOS, Android. 
+                        Use the same config across all your devices seamlessly.
+                    </p>
                 </div>
             </div>
         </div>
@@ -185,27 +263,13 @@
                     <div class="mb-3">
                         <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
                              style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
-                            1
-                        </div>
-                    </div>
-                    <h5 class="fw-bold mb-3">Test First</h5>
-                    <p class="text-muted mb-0">
-                        Try our 15-minute demo to verify compatibility and performance before purchasing.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="card-modern p-4 text-center h-100">
-                    <div class="mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
-                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
-                            2
+                            3
                         </div>
                     </div>
                     <h5 class="fw-bold mb-3">Secure Payment</h5>
                     <p class="text-muted mb-0">
-                        Complete your purchase with our secure Stripe checkout. Your payment is protected.
+                        Complete your purchase with our secure Stripe checkout. 
+                        Your payment information is protected and encrypted.
                     </p>
                 </div>
             </div>
@@ -213,29 +277,15 @@
             <div class="col-lg-3 col-md-6">
                 <div class="card-modern p-4 text-center h-100">
                     <div class="mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
-                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
-                            3
-                        </div>
-                    </div>
-                    <h5 class="fw-bold mb-3">Download Config</h5>
-                    <p class="text-muted mb-0">
-                        Instantly receive your WireGuard configuration file and QR code for easy setup.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="card-modern p-4 text-center h-100">
-                    <div class="mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                        <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
                              style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
                             4
                         </div>
                     </div>
                     <h5 class="fw-bold mb-3">Connect & Browse</h5>
                     <p class="text-muted mb-0">
-                        Import to WireGuard app and enjoy secure, private browsing immediately.
+                        Download your config files and connect instantly. 
+                        Enjoy secure, private browsing immediately.
                     </p>
                 </div>
             </div>
@@ -243,107 +293,44 @@
     </div>
 </section>
 
-<!-- Service Details Section -->
+<!-- Service Transparency Section -->
 <section class="section-padding">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-6 mb-4">
-                <h2 class="section-title">Enterprise-Grade Infrastructure</h2>
-                <p class="section-subtitle">Built for performance, designed for privacy</p>
-                
-                <ul class="feature-list">
-                    <li>
-                        <i class="fas fa-server"></i>
-                        High-performance dedicated servers
-                    </li>
-                    <li>
-                        <i class="fas fa-globe"></i>
-                        Strategic server locations for optimal speed
-                    </li>
-                    <li>
-                        <i class="fas fa-chart-line"></i>
-                        99.9% uptime guarantee
-                    </li>
-                    <li>
-                        <i class="fas fa-mobile-alt"></i>
-                        Universal device compatibility
-                    </li>
-                    <li>
-                        <i class="fas fa-headset"></i>
-                        Professional technical support
-                    </li>
-                </ul>
-                
-                <div class="mt-4">
-                    <a href="{{ url_for('test') }}" class="btn-secondary-custom me-3">
-                        <i class="fas fa-play me-2"></i>Try Demo
-                    </a>
-                    <a href="{{ url_for('contact') }}" class="btn-secondary-custom">
-                        <i class="fas fa-question-circle me-2"></i>Learn More
-                    </a>
-                </div>
-            </div>
-            
-            <div class="col-lg-6">
-                <div class="card-modern p-5 text-center">
-                    <div class="mb-4">
-                        <i class="fas fa-shield-alt text-primary" style="font-size: 4rem;"></i>
-                    </div>
-                    <h4 class="fw-bold mb-3">Professional Privacy Protection</h4>
-                    <p class="text-muted mb-4">
-                        Your internet traffic is encrypted and routed through our secure servers, 
-                        making it impossible for ISPs, governments, or hackers to monitor your activity.
-                    </p>
-                    <div class="row text-center">
-                        <div class="col-4">
-                            <div class="fw-bold text-primary fs-4">256-bit</div>
-                            <small class="text-muted">Encryption</small>
-                        </div>
-                        <div class="col-4">
-                            <div class="fw-bold text-success fs-4">0-logs</div>
-                            <small class="text-muted">Policy</small>
-                        </div>
-                        <div class="col-4">
-                            <div class="fw-bold text-warning fs-4">24/7</div>
-                            <small class="text-muted">Protection</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Service Limitations Section -->
-<section class="section-padding bg-light">
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="section-title">Transparent Service Information</h2>
-            <p class="section-subtitle">We believe in honest communication about our service capabilities</p>
+            <p class="section-subtitle">We believe in honest communication about our capabilities and limitations</p>
         </div>
         
         <div class="row g-4">
             <div class="col-lg-6">
                 <div class="card-modern p-4 h-100">
-                    <h5 class="fw-bold mb-3 text-primary">
-                        <i class="fas fa-users me-2"></i>Limited Capacity Service
+                    <h5 class="fw-bold mb-3 text-success">
+                        <i class="fas fa-check-circle me-2"></i>What We Provide
                     </h5>
-                    <p class="text-muted mb-3">
-                        We maintain only 10 active VPN connections to ensure optimal performance for all users. 
-                        This approach guarantees high-speed access and reliable connectivity.
-                    </p>
                     <ul class="list-unstyled">
                         <li class="mb-2">
-                            <i class="fas fa-check text-success me-2"></i>
-                            Maximum 10 concurrent users
+                            <i class="fas fa-server text-primary me-2"></i>
+                            Multiple high-performance VPS servers
                         </li>
                         <li class="mb-2">
-                            <i class="fas fa-check text-success me-2"></i>
-                            No bandwidth throttling
+                            <i class="fas fa-globe text-primary me-2"></i>
+                            Choice of server IP addresses
                         </li>
                         <li class="mb-2">
-                            <i class="fas fa-check text-success me-2"></i>
-                            Guaranteed server resources
+                            <i class="fas fa-shield-alt text-primary me-2"></i>
+                            Military-grade WireGuard encryption
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-clock text-primary me-2"></i>
+                            Flexible subscription durations
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-headset text-primary me-2"></i>
+                            Professional technical support
+                        </li>
+                        <li class="mb-0">
+                            <i class="fas fa-eye-slash text-primary me-2"></i>
+                            Strict no-logging policy
                         </li>
                     </ul>
                 </div>
@@ -352,24 +339,32 @@
             <div class="col-lg-6">
                 <div class="card-modern p-4 h-100">
                     <h5 class="fw-bold mb-3 text-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>No Refund Policy
+                        <i class="fas fa-info-circle me-2"></i>Service Limitations
                     </h5>
-                    <p class="text-muted mb-3">
-                        All sales are final. We offer a free 15-minute test to verify compatibility 
-                        and performance before purchase. This policy keeps our service affordable.
-                    </p>
                     <ul class="list-unstyled">
                         <li class="mb-2">
-                            <i class="fas fa-flask text-info me-2"></i>
-                            Free 15-minute trial available
+                            <i class="fas fa-users text-warning me-2"></i>
+                            Limited capacity per server for optimal performance
                         </li>
                         <li class="mb-2">
-                            <i class="fas fa-tools text-info me-2"></i>
-                            Technical support included
+                            <i class="fas fa-ban text-warning me-2"></i>
+                            No refunds policy (free test available)
                         </li>
                         <li class="mb-2">
-                            <i class="fas fa-shield-alt text-info me-2"></i>
-                            Refunds only for technical failures
+                            <i class="fas fa-envelope text-warning me-2"></i>
+                            Email-only technical support
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-map-marker-alt text-warning me-2"></i>
+                            Limited server locations
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-handshake text-warning me-2"></i>
+                            Manual service management
+                        </li>
+                        <li class="mb-0">
+                            <i class="fas fa-clock text-warning me-2"></i>
+                            24-48 hour support response time
                         </li>
                     </ul>
                 </div>
@@ -379,32 +374,46 @@
 </section>
 
 <!-- CTA Section -->
-<section class="section-padding">
+<section class="section-padding bg-light">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8 text-center">
                 <h2 class="section-title">Ready to Secure Your Connection?</h2>
                 <p class="section-subtitle">
-                    Join our exclusive community of privacy-conscious users. 
-                    Start with a free test, then upgrade to full access.
+                    Join our community of privacy-conscious users. Choose the plan that fits your needs,
+                    from quick tests to lifetime protection.
                 </p>
                 
-                <div class="d-flex gap-3 justify-content-center flex-wrap">
-                    <button class="btn-primary-custom btn-lg" onclick="purchaseVPN()">
-                        <i class="fas fa-credit-card me-2"></i>
-                        Purchase Monthly Access
-                    </button>
+                <div class="d-flex gap-3 justify-content-center flex-wrap mb-4">
+                    <a href="{{ url_for('order') }}" class="btn-primary-custom btn-lg">
+                        <i class="fas fa-shopping-cart me-2"></i>
+                        Browse All Plans
+                    </a>
                     <a href="{{ url_for('test') }}" class="btn-secondary-custom btn-lg">
                         <i class="fas fa-flask me-2"></i>
                         Start Free Test
                     </a>
                 </div>
                 
-                <div class="mt-4">
-                    <small class="text-muted">
-                        <i class="fas fa-lock me-2"></i>
-                        Secure payment processing • No auto-renewal • Instant access
-                    </small>
+                <div class="row text-center mt-4">
+                    <div class="col-md-4">
+                        <small class="text-muted">
+                            <i class="fas fa-lock me-1"></i>
+                            Secure Payment
+                        </small>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted">
+                            <i class="fas fa-ban me-1"></i>
+                            No Auto-Renewal
+                        </small>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted">
+                            <i class="fas fa-download me-1"></i>
+                            Instant Access
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -414,64 +423,97 @@
 
 {% block scripts %}
 <script>
-    async function purchaseVPN() {
-        try {
-            const response = await fetch('/create-checkout-session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.error) {
-                // Show professional error message
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'alert alert-warning alert-dismissible fade show position-fixed';
-                errorDiv.style.cssText = 'top: 100px; right: 20px; z-index: 9999; max-width: 400px;';
-                errorDiv.innerHTML = `
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Service Unavailable:</strong> ${data.error}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.body.appendChild(errorDiv);
-                
-                // Auto-remove after 5 seconds
-                setTimeout(() => {
-                    if (errorDiv.parentNode) {
-                        errorDiv.parentNode.removeChild(errorDiv);
+    // Update slot status indicators
+    function updateSlotStatus() {
+        fetch('/api/slot-status')
+            .then(response => response.json())
+            .then(data => {
+                // Update monthly status
+                const monthlyElement = document.getElementById('monthly-status');
+                if (monthlyElement && data.tiers && data.tiers.monthly) {
+                    const available = data.tiers.monthly.available;
+                    const capacity = data.tiers.monthly.capacity;
+                    const percentage = capacity > 0 ? (available / capacity) * 100 : 0;
+                    
+                    let statusClass, dotClass;
+                    if (percentage > 50) {
+                        statusClass = 'status-online';
+                        dotClass = 'online';
+                    } else if (percentage > 20) {
+                        statusClass = 'status-busy';
+                        dotClass = 'busy';
+                    } else {
+                        statusClass = 'status-offline';
+                        dotClass = 'offline';
                     }
-                }, 5000);
-                return;
-            }
-            
-            // Redirect to Stripe Checkout
-            window.location.href = data.checkout_url;
-            
-        } catch (error) {
-            console.error('Error:', error);
-            
-            // Show professional error message
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
-            errorDiv.style.cssText = 'top: 100px; right: 20px; z-index: 9999; max-width: 400px;';
-            errorDiv.innerHTML = `
-                <i class="fas fa-times-circle me-2"></i>
-                <strong>Connection Error:</strong> Please check your internet connection and try again.
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.body.appendChild(errorDiv);
-            
-            setTimeout(() => {
-                if (errorDiv.parentNode) {
-                    errorDiv.parentNode.removeChild(errorDiv);
+                    
+                    monthlyElement.innerHTML = `
+                        <div class="status-indicator ${statusClass}">
+                            <span class="status-dot ${dotClass}"></span>
+                            ${available} monthly slots available
+                        </div>
+                    `;
                 }
-            }, 5000);
-        }
+                
+                // Update test status
+                const testElement = document.getElementById('test-status');
+                if (testElement) {
+                    testElement.innerHTML = `
+                        <div class="status-indicator status-online">
+                            <span class="status-dot online"></span>
+                            Free tests available
+                        </div>
+                    `;
+                }
+                
+                // Update total IPs info
+                const totalIpsElement = document.getElementById('total-ips');
+                if (totalIpsElement && data.summary) {
+                    const totalIps = data.summary.total_ips || 'Multiple';
+                    totalIpsElement.innerHTML = `
+                        <div class="status-indicator status-online">
+                            <span class="status-dot online"></span>
+                            ${totalIps} server IPs available
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.log('Status update failed:', err);
+                // Set fallback status
+                const elements = ['monthly-status', 'test-status', 'total-ips'];
+                elements.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.innerHTML = `
+                            <div class="status-indicator status-busy">
+                                <span class="status-dot busy"></span>
+                                Loading...
+                            </div>
+                        `;
+                    }
+                });
+            });
     }
+    
+    // Update every 30 seconds
+    setInterval(updateSlotStatus, 30000);
+    updateSlotStatus(); // Initial load
 
-    // Add smooth animations on scroll
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Add reveal animations
     const observerOptions = {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
@@ -489,12 +531,153 @@
     // Observe cards for animation
     document.addEventListener('DOMContentLoaded', () => {
         const cards = document.querySelectorAll('.card-modern, .card-pricing');
-        cards.forEach(card => {
+        cards.forEach((card, index) => {
             card.style.opacity = '0';
             card.style.transform = 'translateY(20px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            card.style.transition = `opacity 0.6s ease ${index * 0.1}s, transform 0.6s ease ${index * 0.1}s`;
             observer.observe(card);
+        });
+        
+        // Add hover effects
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+    });
+
+    // Price animation on load
+    document.addEventListener('DOMContentLoaded', function() {
+        const priceElements = document.querySelectorAll('.display-6');
+        priceElements.forEach((element, index) => {
+            const finalPrice = element.textContent;
+            element.textContent = '$0.00';
+            
+            setTimeout(() => {
+                let current = 0;
+                const target = parseFloat(finalPrice.replace('text-center h-100">
+                    <div class="mb-3">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                            1
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-3">Try First</h5>
+                    <p class="text-muted mb-0">
+                        Test our service with a 15-minute free trial. Verify compatibility 
+                        and performance before making any commitment.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                            2
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-3">Choose Your Plan</h5>
+                    <p class="text-muted mb-0">
+                        Select from multiple duration options and server IPs. 
+                        Pick the combination that best fits your needs.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 , '').replace('FREE', '0'));
+                const increment = target / 30;
+                
+                const animate = () => {
+                    current += increment;
+                    if (current >= target) {
+                        element.textContent = finalPrice;
+                    } else {
+                        if (finalPrice === 'FREE') {
+                            element.textContent = 'FREE';
+                        } else {
+                            element.textContent = 'text-center h-100">
+                    <div class="mb-3">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                            1
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-3">Try First</h5>
+                    <p class="text-muted mb-0">
+                        Test our service with a 15-minute free trial. Verify compatibility 
+                        and performance before making any commitment.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                            2
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-3">Choose Your Plan</h5>
+                    <p class="text-muted mb-0">
+                        Select from multiple duration options and server IPs. 
+                        Pick the combination that best fits your needs.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4  + current.toFixed(2);
+                        }
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                if (target > 0) {
+                    animate();
+                } else {
+                    element.textContent = 'FREE';
+                }
+            }, index * 200);
         });
     });
 </script>
 {% endblock %}
+<div class="col-lg-3 col-md-6">
+    <div class="card-modern p-4 text-center h-100">
+        <div class="mb-3">
+            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                 style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                1
+            </div>
+        </div>
+        <h5 class="fw-bold mb-3">Try First</h5>
+        <p class="text-muted mb-0">
+            Test our service with a 15-minute free trial. Verify compatibility 
+            and performance before making any commitment.
+        </p>
+    </div>
+</div>
+
+<div class="col-lg-3 col-md-6">
+    <div class="card-modern p-4 text-center h-100">
+        <div class="mb-3">
+            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                 style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                2
+            </div>
+        </div>
+        <h5 class="fw-bold mb-3">Choose Your Plan</h5>
+        <p class="text-muted mb-0">
+            Select from multiple duration options and server IPs. 
+            Pick the combination that best fits your needs.
+        </p>
+    </div>
+</div>

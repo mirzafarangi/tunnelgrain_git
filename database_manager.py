@@ -1,609 +1,766 @@
 import os
 import json
 import psycopg2
+import requests
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
 import uuid
+import logging
+from dotenv import load_dotenv
 
-class DatabaseSlotManager:
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+class EnhancedVPNManager:
+    """
+    Complete VPN business management system
+    Handles PostgreSQL database, VPS communication, and multi-tier operations
+    """
+    
     def __init__(self):
         self.database_url = os.environ.get('DATABASE_URL')
         self.use_database = bool(self.database_url)
         
+        # Service tier configuration
+        self.service_tiers = {
+            'test': {
+                'name': 'Free Test',
+                'duration_days': 0,  # Special: 15 minutes
+                'price_cents': 0,
+                'description': '15-minute free trial',
+                'order_prefix': '72'
+            },
+            'monthly': {
+                'name': 'Monthly VPN',
+                'duration_days': 30,
+                'price_cents': 499,
+                'description': '30 days unlimited access',
+                'order_prefix': '42'
+            },
+            'quarterly': {
+                'name': '3-Month VPN',
+                'duration_days': 90,
+                'price_cents': 1299,
+                'description': '90 days unlimited access',
+                'order_prefix': '42'
+            },
+            'biannual': {
+                'name': '6-Month VPN',
+                'duration_days': 180,
+                'price_cents': 2399,
+                'description': '180 days unlimited access',
+                'order_prefix': '42'
+            },
+            'annual': {
+                'name': '12-Month VPN',
+                'duration_days': 365,
+                'price_cents': 3999,
+                'description': '365 days unlimited access',
+                'order_prefix': '42'
+            },
+            'lifetime': {
+                'name': 'Lifetime VPN',
+                'duration_days': 36500,  # 100 years
+                'price_cents': 9999,
+                'description': 'Lifetime unlimited access',
+                'order_prefix': '42'
+            }
+        }
+        
+        # VPS configuration
+        self.vps_endpoints = self.load_vps_config()
+        
+        # Initialize database or fallback
         if self.use_database:
-            print("[DB] Initializing PostgreSQL database...")
+            logger.info("[DB] Initializing PostgreSQL database...")
             self.init_database()
         else:
-            print("[DB] No DATABASE_URL found, using fallback JSON file...")
+            logger.info("[DB] No DATABASE_URL found, using JSON fallback...")
             self.fallback_to_json()
     
+    def load_vps_config(self) -> Dict:
+        """Load VPS configuration from environment variables"""
+        return {
+            "vps_1": {
+                "endpoint": os.environ.get('VPS_1_ENDPOINT', 'http://213.170.133.116:8080'),
+                "name": os.environ.get('VPS_1_NAME', 'primary_vps'),
+                "ips": ["213.170.133.116"]
+            }
+        }
+    
     def init_database(self):
-        """Initialize PostgreSQL database for slot management"""
+        """Initialize PostgreSQL database with complete schema"""
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
             
-            # Create slots table if it doesn't exist
+            # Main orders table
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS vpn_slots (
-                    slot_id VARCHAR(20) PRIMARY KEY,
-                    slot_type VARCHAR(10) NOT NULL,
-                    available BOOLEAN DEFAULT TRUE,
+                CREATE TABLE IF NOT EXISTS vpn_orders (
+                    order_id VARCHAR(36) PRIMARY KEY,
+                    order_number VARCHAR(20) UNIQUE NOT NULL,
+                    tier VARCHAR(20) NOT NULL,
+                    duration_days INTEGER NOT NULL,
+                    ip_address VARCHAR(45) NOT NULL,
+                    vps_name VARCHAR(50) NOT NULL,
+                    status VARCHAR(20) DEFAULT 'active',
+                    price_cents INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     assigned_at TIMESTAMP,
                     expires_at TIMESTAMP,
-                    order_number VARCHAR(20),
                     stripe_session_id VARCHAR(200),
-                    auto_managed BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    user_fingerprint VARCHAR(64),
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
             
-            # Create index for faster queries
+            # VPS status tracking table
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_vpn_slots_type_available 
-                ON vpn_slots (slot_type, available);
+                CREATE TABLE IF NOT EXISTS vps_status (
+                    vps_name VARCHAR(50) NOT NULL,
+                    ip_address VARCHAR(45) NOT NULL,
+                    tier VARCHAR(20) NOT NULL,
+                    available_configs INTEGER DEFAULT 0,
+                    total_configs INTEGER DEFAULT 0,
+                    last_generated TIMESTAMP,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (vps_name, ip_address, tier)
+                );
             """)
             
+            # Active timers for expiration tracking
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_vpn_slots_expires 
-                ON vpn_slots (expires_at) WHERE expires_at IS NOT NULL;
+                CREATE TABLE IF NOT EXISTS active_timers (
+                    timer_id VARCHAR(50) PRIMARY KEY,
+                    order_id VARCHAR(36) NOT NULL,
+                    order_number VARCHAR(20) NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    vps_notified BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (order_id) REFERENCES vpn_orders(order_id) ON DELETE CASCADE
+                );
             """)
             
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_vpn_slots_order 
-                ON vpn_slots (order_number) WHERE order_number IS NOT NULL;
-            """)
-            
-            # Check if slots exist, if not populate initial data
-            cursor.execute("SELECT COUNT(*) FROM vpn_slots;")
-            count = cursor.fetchone()[0]
-            
-            if count == 0:
-                print("[DB] Populating initial slot configuration...")
-                self.populate_initial_slots(cursor)
-            else:
-                print(f"[DB] Found {count} existing slots in database")
+            # Performance indexes
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_expires ON vpn_orders (expires_at) WHERE expires_at IS NOT NULL;")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON vpn_orders (status);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_tier ON vpn_orders (tier);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_stripe ON vpn_orders (stripe_session_id) WHERE stripe_session_id IS NOT NULL;")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_timers_expires ON active_timers (expires_at);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_vps_status_updated ON vps_status (last_updated);")
             
             conn.commit()
             cursor.close()
             conn.close()
             
-            print("[DB] ✅ Database initialized successfully")
+            logger.info("[DB] ✅ PostgreSQL database initialized successfully")
             
         except Exception as e:
-            print(f"[DB] ❌ Database initialization error: {e}")
-            print("[DB] Falling back to JSON file...")
+            logger.error(f"[DB] ❌ Database initialization failed: {e}")
             self.use_database = False
             self.fallback_to_json()
     
-    def populate_initial_slots(self, cursor):
-        """Populate database with initial slot configuration"""
-        # Monthly slots (client_01 to client_10)
-        for i in range(1, 11):
-            slot_id = f"client_{i:02d}"
-            cursor.execute("""
-                INSERT INTO vpn_slots (slot_id, slot_type, available, auto_managed)
-                VALUES (%s, %s, %s, %s)
-            """, (slot_id, 'monthly', True, True))
-        
-        # Test slots (test_01 to test_10)
-        for i in range(1, 11):
-            slot_id = f"test_{i:02d}"
-            cursor.execute("""
-                INSERT INTO vpn_slots (slot_id, slot_type, available, auto_managed)
-                VALUES (%s, %s, %s, %s)
-            """, (slot_id, 'test', True, True))
-        
-        print("[DB] ✅ Populated 20 initial slots (10 monthly + 10 test)")
-    
     def get_connection(self):
-        """Get database connection"""
+        """Get PostgreSQL database connection"""
         if not self.database_url:
             raise Exception("DATABASE_URL not configured")
-        
         return psycopg2.connect(self.database_url, sslmode='require')
     
-    def get_slots(self):
-        """Get all slots in the format expected by the Flask app"""
-        if self.use_database:
-            try:
-                conn = self.get_connection()
-                cursor = conn.cursor(cursor_factory=RealDictCursor)
-                cursor.execute("SELECT * FROM vpn_slots ORDER BY slot_id;")
-                rows = cursor.fetchall()
-                cursor.close()
-                conn.close()
-                
-                # Convert to the expected format
-                slots = {'monthly': {}, 'test': {}}
-                for row in rows:
-                    slot_data = {
-                        'available': row['available'],
-                        'assigned_at': row['assigned_at'].isoformat() if row['assigned_at'] else None,
-                        'expires_at': row['expires_at'].isoformat() if row['expires_at'] else None,
-                        'order_number': row['order_number'],
-                        'slot_type': row['slot_type'],
-                        'auto_managed': row['auto_managed'],
-                        'stripe_session_id': row.get('stripe_session_id')
-                    }
-                    slots[row['slot_type']][row['slot_id']] = slot_data
-                
-                return slots
-                
-            except Exception as e:
-                print(f"[DB] Error fetching slots: {e}")
-                return self.get_fallback_slots()
-        else:
-            return self.get_fallback_slots()
+    # === CORE VPN SLOT MANAGEMENT ===
     
-    def get_available_slot(self, slot_type='monthly'):
-        """Get next available slot"""
+    def assign_vpn_slot(self, tier: str, ip_address: str, vps_name: str = "vps_1", 
+                       stripe_session_id: str = None, user_fingerprint: str = None) -> Optional[Tuple[str, str]]:
+        """
+        Assign VPN slot to customer with complete tracking
+        Returns: (order_id, order_number) or None if failed
+        """
+        if tier not in self.service_tiers:
+            logger.error(f"[ASSIGN] Invalid tier: {tier}")
+            return None
+        
         if self.use_database:
-            try:
-                conn = self.get_connection()
-                cursor = conn.cursor()
-                
-                cursor.execute("""
-                    SELECT slot_id FROM vpn_slots 
-                    WHERE slot_type = %s AND available = TRUE 
-                    ORDER BY slot_id LIMIT 1
-                """, (slot_type,))
-                
-                result = cursor.fetchone()
-                cursor.close()
-                conn.close()
-                
-                return result[0] if result else None
-                
-            except Exception as e:
-                print(f"[DB] Error getting available slot: {e}")
-                return None
+            return self._assign_database_slot(tier, ip_address, vps_name, stripe_session_id, user_fingerprint)
         else:
-            return self.get_fallback_available_slot(slot_type)
+            return self._assign_fallback_slot(tier, ip_address, vps_name, stripe_session_id, user_fingerprint)
     
-    def assign_slot(self, slot_type='monthly', duration_days=30, order_number=None, stripe_session_id=None):
-        """Assign a slot using database"""
-        if self.use_database:
-            try:
-                conn = self.get_connection()
-                cursor = conn.cursor()
-                
-                # Find available slot
-                cursor.execute("""
-                    SELECT slot_id FROM vpn_slots 
-                    WHERE slot_type = %s AND available = TRUE 
-                    ORDER BY slot_id LIMIT 1
-                    FOR UPDATE
-                """, (slot_type,))
-                
-                result = cursor.fetchone()
-                if not result:
-                    cursor.close()
-                    conn.close()
-                    return None
-                
-                slot_id = result[0]
-                
-                # Generate order number if not provided
-                if not order_number:
-                    order_number = f"42{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
-                
-                # Calculate expiration
-                now = datetime.now()
-                if slot_type == 'test':
-                    expires_at = now + timedelta(minutes=15)
-                else:
-                    expires_at = now + timedelta(days=duration_days)
-                
-                # Update slot
-                cursor.execute("""
-                    UPDATE vpn_slots 
-                    SET available = FALSE, 
-                        assigned_at = %s,
-                        expires_at = %s,
-                        order_number = %s,
-                        stripe_session_id = %s,
-                        updated_at = %s
-                    WHERE slot_id = %s
-                """, (now, expires_at, order_number, stripe_session_id, now, slot_id))
-                
-                conn.commit()
-                cursor.close()
-                conn.close()
-                
-                print(f"[DB] ✅ Assigned {slot_type} slot {slot_id}, order: {order_number}, expires: {expires_at}")
-                return slot_id, order_number
-                
-            except Exception as e:
-                print(f"[DB] ❌ Error assigning slot: {e}")
-                return None
-        else:
-            return self.assign_fallback_slot(slot_type, duration_days, order_number, stripe_session_id)
+    def _assign_database_slot(self, tier: str, ip_address: str, vps_name: str, 
+                            stripe_session_id: str, user_fingerprint: str) -> Optional[Tuple[str, str]]:
+        """Assign slot using PostgreSQL database"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Generate unique identifiers
+            order_id = str(uuid.uuid4())
+            order_number = self.generate_order_number(tier)
+            
+            # Get tier configuration
+            tier_config = self.service_tiers[tier]
+            duration_days = tier_config['duration_days']
+            price_cents = tier_config['price_cents']
+            
+            # Calculate expiration
+            now = datetime.now()
+            if tier == 'test':
+                expires_at = now + timedelta(minutes=15)
+            else:
+                expires_at = now + timedelta(days=duration_days)
+            
+            # Insert order record
+            cursor.execute("""
+                INSERT INTO vpn_orders 
+                (order_id, order_number, tier, duration_days, ip_address, 
+                 vps_name, price_cents, assigned_at, expires_at, stripe_session_id, user_fingerprint)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (order_id, order_number, tier, duration_days, ip_address, 
+                  vps_name, price_cents, now, expires_at, stripe_session_id, user_fingerprint))
+            
+            # Create expiration timer
+            timer_id = f"{order_id}_{order_number}"
+            cursor.execute("""
+                INSERT INTO active_timers (timer_id, order_id, order_number, expires_at)
+                VALUES (%s, %s, %s, %s)
+            """, (timer_id, order_id, order_number, expires_at))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            # Notify VPS to start expiration timer
+            duration_seconds = 900 if tier == 'test' else duration_days * 24 * 3600
+            self.notify_vps_start_timer(vps_name, order_number, order_id, tier, ip_address, duration_seconds)
+            
+            logger.info(f"[ASSIGN] ✅ {tier} slot {order_number} assigned to {ip_address}")
+            return order_id, order_number
+            
+        except Exception as e:
+            logger.error(f"[ASSIGN] ❌ Database error: {e}")
+            return None
     
-    def cleanup_expired_slots(self):
-        """Clean up expired slots"""
-        if self.use_database:
-            try:
-                conn = self.get_connection()
-                cursor = conn.cursor()
-                
-                # Get expired slots before cleaning
-                cursor.execute("""
-                    SELECT slot_id, slot_type FROM vpn_slots 
-                    WHERE available = FALSE 
-                    AND expires_at IS NOT NULL 
-                    AND expires_at < CURRENT_TIMESTAMP
-                """)
-                expired_slots = cursor.fetchall()
-                
-                # Clean expired slots
-                cursor.execute("""
-                    UPDATE vpn_slots 
-                    SET available = TRUE,
-                        assigned_at = NULL,
-                        expires_at = NULL,
-                        order_number = NULL,
-                        stripe_session_id = NULL,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE available = FALSE 
-                    AND expires_at IS NOT NULL 
-                    AND expires_at < CURRENT_TIMESTAMP
-                """)
-                
-                cleaned_count = cursor.rowcount
-                conn.commit()
-                cursor.close()
-                conn.close()
-                
-                if expired_slots:
-                    cleaned_slots = [f"{row[1]}:{row[0]}" for row in expired_slots]
-                    print(f"[DB] ✅ Auto-released {cleaned_count} expired slots: {cleaned_slots}")
-                    return cleaned_slots
-                
-                return []
-                
-            except Exception as e:
-                print(f"[DB] ❌ Error cleaning expired slots: {e}")
-                return []
-        else:
-            return self.cleanup_fallback_slots()
+    def generate_order_number(self, tier: str) -> str:
+        """Generate order number with tier-specific prefix"""
+        tier_config = self.service_tiers.get(tier, {})
+        prefix = tier_config.get('order_prefix', '42')
+        return f"{prefix}{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
     
-    def release_slot(self, slot_type, slot_id):
-        """Release a slot back to available pool"""
-        if self.use_database:
-            try:
-                conn = self.get_connection()
-                cursor = conn.cursor()
+    def notify_vps_start_timer(self, vps_name: str, order_number: str, order_id: str, 
+                              tier: str, ip_address: str, duration_seconds: int):
+        """Notify VPS to start expiration timer for config"""
+        try:
+            vps_config = self.vps_endpoints.get(vps_name)
+            if not vps_config:
+                logger.warning(f"[VPS] VPS config not found: {vps_name}")
+                return
+            
+            # Map tier to VPS tier names
+            tier_mapping = {
+                'test': 'test',
+                'monthly': 'monthly',
+                'quarterly': 'quarterly',
+                'biannual': 'biannual',
+                'annual': 'annual',
+                'lifetime': 'lifetime'
+            }
+            
+            vps_tier = tier_mapping.get(tier, tier)
+            endpoint = f"{vps_config['endpoint']}/api/start-timer"
+            
+            payload = {
+                "order_number": order_number,
+                "tier": vps_tier,
+                "ip_address": ip_address,
+                "duration_seconds": duration_seconds
+            }
+            
+            response = requests.post(endpoint, json=payload, timeout=10)
+            
+            if response.status_code == 200:
+                logger.info(f"[VPS] ✅ Timer started for {order_number} on {vps_name}")
                 
-                cursor.execute("""
-                    UPDATE vpn_slots 
-                    SET available = TRUE,
-                        assigned_at = NULL,
-                        expires_at = NULL,
-                        order_number = NULL,
-                        stripe_session_id = NULL,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE slot_id = %s AND slot_type = %s
-                """, (slot_id, slot_type))
+                # Mark timer as notified in database
+                if self.use_database:
+                    try:
+                        conn = self.get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            UPDATE active_timers SET vps_notified = TRUE 
+                            WHERE order_id = %s
+                        """, (order_id,))
+                        conn.commit()
+                        cursor.close()
+                        conn.close()
+                    except Exception as db_e:
+                        logger.warning(f"[VPS] Failed to mark timer as notified: {db_e}")
+            else:
+                logger.warning(f"[VPS] ⚠️ Timer notification failed: HTTP {response.status_code}")
                 
-                conn.commit()
-                cursor.close()
-                conn.close()
-                
-                print(f"[DB] ✅ Released slot {slot_type}:{slot_id}")
-                
-            except Exception as e:
-                print(f"[DB] ❌ Error releasing slot: {e}")
-        else:
-            self.release_fallback_slot(slot_type, slot_id)
+        except Exception as e:
+            logger.warning(f"[VPS] ⚠️ Timer notification error: {e}")
     
-    def find_slot_by_order(self, order_number):
-        """Find slot by order number"""
+    # === ORDER MANAGEMENT ===
+    
+    def get_order_status(self, order_number: str) -> Optional[Dict]:
+        """Get detailed order status by order number"""
         if self.use_database:
             try:
                 conn = self.get_connection()
                 cursor = conn.cursor(cursor_factory=RealDictCursor)
                 cursor.execute("""
-                    SELECT * FROM vpn_slots 
-                    WHERE order_number = %s
+                    SELECT o.*, t.timer_id, t.vps_notified
+                    FROM vpn_orders o
+                    LEFT JOIN active_timers t ON o.order_id = t.order_id
+                    WHERE o.order_number = %s
                 """, (order_number,))
                 
-                row = cursor.fetchone()
+                result = cursor.fetchone()
                 cursor.close()
                 conn.close()
                 
-                if row:
-                    slot_data = {
-                        'available': row['available'],
-                        'assigned_at': row['assigned_at'].isoformat() if row['assigned_at'] else None,
-                        'expires_at': row['expires_at'].isoformat() if row['expires_at'] else None,
-                        'order_number': row['order_number'],
-                        'slot_type': row['slot_type'],
-                        'auto_managed': row['auto_managed']
-                    }
-                    return row['slot_type'], row['slot_id'], slot_data
+                if result:
+                    order_data = dict(result)
+                    # Add tier information
+                    tier_config = self.service_tiers.get(order_data['tier'], {})
+                    order_data['tier_info'] = tier_config
+                    return order_data
+                
+                return None
+                
+            except Exception as e:
+                logger.error(f"[ORDER] ❌ Error getting order status: {e}")
+                return None
+        else:
+            return self._get_fallback_order_status(order_number)
+    
+    def find_order_by_stripe_session(self, stripe_session_id: str) -> Optional[Dict]:
+        """Find order by Stripe session ID (prevents duplicate payments)"""
+        if not self.use_database:
+            return None
+            
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute("""
+                SELECT * FROM vpn_orders 
+                WHERE stripe_session_id = %s
+            """, (stripe_session_id,))
+            
+            result = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            
+            return dict(result) if result else None
+            
+        except Exception as e:
+            logger.error(f"[ORDER] ❌ Error finding order by Stripe session: {e}")
+            return None
+    
+    def cleanup_expired_orders(self) -> int:
+        """Clean up expired orders and notify VPS"""
+        if not self.use_database:
+            return self._cleanup_fallback_orders()
+            
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Get expired orders
+            cursor.execute("""
+                SELECT order_id, order_number, vps_name, tier
+                FROM vpn_orders 
+                WHERE status = 'active' AND expires_at < CURRENT_TIMESTAMP
+            """)
+            expired_orders = cursor.fetchall()
+            
+            if expired_orders:
+                # Update status to expired
+                cursor.execute("""
+                    UPDATE vpn_orders 
+                    SET status = 'expired', updated_at = CURRENT_TIMESTAMP
+                    WHERE status = 'active' AND expires_at < CURRENT_TIMESTAMP
+                """)
+                
+                # Remove expired timers
+                cursor.execute("""
+                    DELETE FROM active_timers 
+                    WHERE expires_at < CURRENT_TIMESTAMP
+                """)
+                
+                conn.commit()
+                
+                # Notify VPS for cleanup (optional, VPS handles this automatically)
+                unique_vps = set(order[2] for order in expired_orders)
+                for vps_name in unique_vps:
+                    self.notify_vps_cleanup(vps_name)
+                
+                logger.info(f"[CLEANUP] ✅ Expired {len(expired_orders)} orders")
+            
+            cursor.close()
+            conn.close()
+            return len(expired_orders)
+            
+        except Exception as e:
+            logger.error(f"[CLEANUP] ❌ Error cleaning up orders: {e}")
+            return 0
+    
+    def notify_vps_cleanup(self, vps_name: str):
+        """Notify VPS to perform cleanup (optional, for immediate cleanup)"""
+        try:
+            vps_config = self.vps_endpoints.get(vps_name)
+            if not vps_config:
+                return
+                
+            endpoint = f"{vps_config['endpoint']}/api/cleanup"
+            response = requests.post(endpoint, timeout=10)
+            
+            if response.status_code == 200:
+                logger.info(f"[VPS] ✅ Cleanup requested for {vps_name}")
+                
+        except Exception as e:
+            logger.debug(f"[VPS] Cleanup notification failed (not critical): {e}")
+    
+    # === VPS STATUS AND MONITORING ===
+    
+    def get_vps_status_report(self) -> Dict:
+        """Get comprehensive status from all VPS servers"""
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "vps_status": {},
+            "summary": {
+                "total_vps": len(self.vps_endpoints),
+                "active_orders": 0,
+                "revenue_potential": 0
+            }
+        }
+        
+        for vps_name, vps_config in self.vps_endpoints.items():
+            try:
+                endpoint = f"{vps_config['endpoint']}/api/status"
+                response = requests.get(endpoint, timeout=10)
+                
+                if response.status_code == 200:
+                    vps_data = response.json()
+                    report["vps_status"][vps_name] = vps_data
+                    
+                    # Update local cache
+                    self._update_vps_status_cache(vps_name, vps_data)
+                    
+                    # Update summary
+                    if "summary" in vps_data:
+                        vps_summary = vps_data["summary"]
+                        report["summary"]["revenue_potential"] += vps_summary.get("revenue_potential_cents", 0)
+                        
                 else:
-                    return None, None, None
+                    report["vps_status"][vps_name] = {
+                        "error": f"HTTP {response.status_code}",
+                        "available": False
+                    }
                     
             except Exception as e:
-                print(f"[DB] ❌ Error finding slot by order: {e}")
-                return None, None, None
-        else:
-            return self.find_fallback_slot_by_order(order_number)
+                report["vps_status"][vps_name] = {
+                    "error": str(e),
+                    "available": False
+                }
+        
+        # Add database statistics
+        if self.use_database:
+            db_summary = self._get_database_summary()
+            report["summary"].update(db_summary)
+        
+        return report
     
-    # === FALLBACK METHODS (for when database is not available) ===
+    def _update_vps_status_cache(self, vps_name: str, vps_data: Dict):
+        """Update VPS status cache in database"""
+        if not self.use_database:
+            return
+            
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Extract tier information from VPS response
+            tiers_data = vps_data.get("tiers", {})
+            
+            for tier, tier_data in tiers_data.items():
+                # Get the first IP for this VPS (you can enhance this for multi-IP)
+                ip_address = self.vps_endpoints[vps_name]["ips"][0] if self.vps_endpoints[vps_name]["ips"] else "unknown"
+                
+                available_configs = tier_data.get("available", 0)
+                total_configs = tier_data.get("capacity", 0)
+                
+                cursor.execute("""
+                    INSERT INTO vps_status 
+                    (vps_name, ip_address, tier, available_configs, total_configs, last_updated)
+                    VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (vps_name, ip_address, tier)
+                    DO UPDATE SET
+                        available_configs = EXCLUDED.available_configs,
+                        total_configs = EXCLUDED.total_configs,
+                        last_updated = CURRENT_TIMESTAMP
+                """, (vps_name, ip_address, tier, available_configs, total_configs))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+        except Exception as e:
+            logger.debug(f"[CACHE] Failed to update VPS status cache: {e}")
+    
+    def _get_database_summary(self) -> Dict:
+        """Get summary statistics from database"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Active orders count
+            cursor.execute("SELECT COUNT(*) FROM vpn_orders WHERE status = 'active'")
+            active_orders = cursor.fetchone()[0]
+            
+            # Orders by tier
+            cursor.execute("""
+                SELECT tier, COUNT(*) 
+                FROM vpn_orders 
+                WHERE status = 'active' 
+                GROUP BY tier
+            """)
+            tier_counts = dict(cursor.fetchall())
+            
+            # Revenue calculation
+            cursor.execute("""
+                SELECT SUM(price_cents) 
+                FROM vpn_orders 
+                WHERE status = 'active' AND tier != 'test'
+            """)
+            current_revenue = cursor.fetchone()[0] or 0
+            
+            # Pending timers
+            cursor.execute("SELECT COUNT(*) FROM active_timers")
+            pending_timers = cursor.fetchone()[0]
+            
+            cursor.close()
+            conn.close()
+            
+            return {
+                "active_orders": active_orders,
+                "tier_counts": tier_counts,
+                "current_revenue_cents": current_revenue,
+                "pending_timers": pending_timers
+            }
+            
+        except Exception as e:
+            logger.error(f"[SUMMARY] ❌ Error getting database summary: {e}")
+            return {}
+    
+    def get_available_ips_for_tier(self, tier: str) -> List[Dict]:
+        """Get available IPs for a specific tier"""
+        available_ips = []
+        
+        try:
+            # Get latest VPS status
+            vps_report = self.get_vps_status_report()
+            
+            for vps_name, vps_data in vps_report["vps_status"].items():
+                if vps_data.get("available", True) and "tiers" in vps_data:
+                    tier_data = vps_data["tiers"].get(tier, {})
+                    available_slots = tier_data.get("available", 0)
+                    
+                    if available_slots > 0:
+                        # Use the configured IPs for this VPS
+                        for ip_address in self.vps_endpoints[vps_name]["ips"]:
+                            available_ips.append({
+                                "ip_address": ip_address,
+                                "vps_name": vps_name,
+                                "available_slots": available_slots,
+                                "tier_info": tier_data
+                            })
+            
+            # Sort by available slots (descending)
+            available_ips.sort(key=lambda x: x["available_slots"], reverse=True)
+            
+        except Exception as e:
+            logger.error(f"[AVAILABILITY] ❌ Error getting available IPs: {e}")
+        
+        return available_ips
+    
+    # === ADMIN AND UTILITIES ===
+    
+    def get_service_tiers(self) -> Dict:
+        """Get all service tier configurations"""
+        return self.service_tiers
+    
+    def get_tier_config(self, tier: str) -> Optional[Dict]:
+        """Get configuration for specific tier"""
+        return self.service_tiers.get(tier)
+    
+    def force_database_reset(self, reset_type: str = "clear_assignments"):
+        """Force database reset (ADMIN ONLY - DANGEROUS)"""
+        if not self.use_database:
+            logger.warning("[RESET] Database not available for reset")
+            return False
+            
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            if reset_type == "full_reset":
+                # NUCLEAR: Drop all tables
+                cursor.execute("DROP TABLE IF EXISTS active_timers CASCADE;")
+                cursor.execute("DROP TABLE IF EXISTS vps_status CASCADE;")
+                cursor.execute("DROP TABLE IF EXISTS vpn_orders CASCADE;")
+                
+                # Recreate schema
+                self.init_database()
+                
+            elif reset_type == "clear_assignments":
+                # Clear all assignments but keep structure
+                cursor.execute("DELETE FROM active_timers;")
+                cursor.execute("UPDATE vpn_orders SET status = 'expired' WHERE status = 'active';")
+                
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            logger.info(f"[RESET] ✅ Database reset completed: {reset_type}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[RESET] ❌ Database reset failed: {e}")
+            return False
+    
+    # === FALLBACK METHODS (JSON) ===
     
     def fallback_to_json(self):
-        """Initialize fallback JSON file system"""
-        self.slots_file = 'slots.json'
-        self.load_fallback_slots()
+        """Initialize JSON fallback system"""
+        self.slots_file = 'enhanced_slots.json'
+        self._load_fallback_data()
     
-    def load_fallback_slots(self):
-        """Load slots from JSON file (fallback)"""
+    def _load_fallback_data(self):
+        """Load data from JSON file"""
         if os.path.exists(self.slots_file):
             try:
                 with open(self.slots_file, 'r') as f:
-                    self.fallback_slots = json.load(f)
-                print(f"[FALLBACK] Loaded slots from {self.slots_file}")
+                    self.fallback_data = json.load(f)
+                logger.info(f"[FALLBACK] Loaded data from {self.slots_file}")
             except Exception as e:
-                print(f"[FALLBACK] Error loading slots file: {e}")
-                self.create_initial_fallback_slots()
+                logger.error(f"[FALLBACK] Error loading data: {e}")
+                self._create_fallback_data()
         else:
-            print(f"[FALLBACK] Creating initial {self.slots_file}")
-            self.create_initial_fallback_slots()
+            self._create_fallback_data()
     
-    def create_initial_fallback_slots(self):
-        """Create initial slots structure"""
-        self.fallback_slots = {
-            'monthly': {f'client_{i:02d}': {
-                'available': True, 
-                'assigned_at': None, 
-                'expires_at': None,
-                'order_number': None,
-                'slot_type': 'monthly',
-                'auto_managed': True
-            } for i in range(1, 11)},
-            'test': {f'test_{i:02d}': {
-                'available': True, 
-                'assigned_at': None, 
-                'expires_at': None,
-                'order_number': None,
-                'slot_type': 'test',
-                'auto_managed': True
-            } for i in range(1, 11)}
+    def _create_fallback_data(self):
+        """Create initial fallback data structure"""
+        self.fallback_data = {
+            "orders": {},
+            "active_timers": {},
+            "last_cleanup": datetime.now().isoformat()
         }
-        self.save_fallback_slots()
+        self._save_fallback_data()
     
-    def save_fallback_slots(self):
-        """Save slots to JSON file (fallback)"""
+    def _save_fallback_data(self):
+        """Save data to JSON file"""
         try:
             with open(self.slots_file, 'w') as f:
-                json.dump(self.fallback_slots, f, indent=2)
+                json.dump(self.fallback_data, f, indent=2, default=str)
         except Exception as e:
-            print(f"[FALLBACK] Error saving slots: {e}")
+            logger.error(f"[FALLBACK] Error saving data: {e}")
     
-    def get_fallback_slots(self):
-        return getattr(self, 'fallback_slots', {})
+    def _assign_fallback_slot(self, tier: str, ip_address: str, vps_name: str, 
+                            stripe_session_id: str, user_fingerprint: str) -> Optional[Tuple[str, str]]:
+        """Assign slot using JSON fallback"""
+        try:
+            order_id = str(uuid.uuid4())
+            order_number = self.generate_order_number(tier)
+            
+            tier_config = self.service_tiers[tier]
+            duration_days = tier_config['duration_days']
+            
+            now = datetime.now()
+            if tier == 'test':
+                expires_at = now + timedelta(minutes=15)
+            else:
+                expires_at = now + timedelta(days=duration_days)
+            
+            # Store order
+            self.fallback_data["orders"][order_id] = {
+                "order_number": order_number,
+                "tier": tier,
+                "duration_days": duration_days,
+                "ip_address": ip_address,
+                "vps_name": vps_name,
+                "price_cents": tier_config['price_cents'],
+                "status": "active",
+                "assigned_at": now.isoformat(),
+                "expires_at": expires_at.isoformat(),
+                "stripe_session_id": stripe_session_id,
+                "user_fingerprint": user_fingerprint
+            }
+            
+            # Store timer
+            timer_id = f"{order_id}_{order_number}"
+            self.fallback_data["active_timers"][timer_id] = {
+                "order_id": order_id,
+                "order_number": order_number,
+                "expires_at": expires_at.isoformat()
+            }
+            
+            self._save_fallback_data()
+            
+            # Notify VPS
+            duration_seconds = 900 if tier == 'test' else duration_days * 24 * 3600
+            self.notify_vps_start_timer(vps_name, order_number, order_id, tier, ip_address, duration_seconds)
+            
+            logger.info(f"[FALLBACK] ✅ {tier} slot {order_number} assigned")
+            return order_id, order_number
+            
+        except Exception as e:
+            logger.error(f"[FALLBACK] ❌ Error assigning slot: {e}")
+            return None
     
-    def get_fallback_available_slot(self, slot_type):
-        slots = self.get_fallback_slots()
-        for slot_id, slot_data in slots.get(slot_type, {}).items():
-            if slot_data.get('available', True):
-                return slot_id
+    def _get_fallback_order_status(self, order_number: str) -> Optional[Dict]:
+        """Get order status from JSON fallback"""
+        for order_data in self.fallback_data.get("orders", {}).values():
+            if order_data.get("order_number") == order_number:
+                # Add tier information
+                tier = order_data.get("tier")
+                if tier:
+                    order_data['tier_info'] = self.service_tiers.get(tier, {})
+                return order_data
         return None
     
-    def assign_fallback_slot(self, slot_type, duration_days, order_number, stripe_session_id):
-        # Implement fallback slot assignment
-        slots = self.get_fallback_slots()
-        slot_id = self.get_fallback_available_slot(slot_type)
-        
-        if not slot_id:
-            return None
-        
-        if not order_number:
-            order_number = f"42{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
-        
+    def _cleanup_fallback_orders(self) -> int:
+        """Clean up expired orders in JSON fallback"""
         now = datetime.now()
-        if slot_type == 'test':
-            expires_at = now + timedelta(minutes=15)
-        else:
-            expires_at = now + timedelta(days=duration_days)
+        expired_count = 0
         
-        slots[slot_type][slot_id].update({
-            'available': False,
-            'assigned_at': now.isoformat(),
-            'expires_at': expires_at.isoformat(),
-            'order_number': order_number,
-            'stripe_session_id': stripe_session_id
-        })
+        # Clean orders
+        for order_id, order_data in list(self.fallback_data.get("orders", {}).items()):
+            if order_data.get("status") == "active":
+                try:
+                    expires_at = datetime.fromisoformat(order_data["expires_at"])
+                    if now > expires_at:
+                        order_data["status"] = "expired"
+                        expired_count += 1
+                except Exception:
+                    pass
         
-        self.fallback_slots = slots
-        self.save_fallback_slots()
-        
-        return slot_id, order_number
-    
-    def cleanup_fallback_slots(self):
-        # Implement fallback cleanup
-        now = datetime.now()
-        cleaned_slots = []
-        slots = self.get_fallback_slots()
-        
-        for slot_type in ['monthly', 'test']:
-            for slot_id, slot_data in slots.get(slot_type, {}).items():
-                if not slot_data.get('available', True) and slot_data.get('expires_at'):
-                    try:
-                        expires_at = datetime.fromisoformat(slot_data['expires_at'])
-                        if now > expires_at:
-                            slot_data.update({
-                                'available': True,
-                                'assigned_at': None,
-                                'expires_at': None,
-                                'order_number': None,
-                                'stripe_session_id': None
-                            })
-                            cleaned_slots.append(f"{slot_type}:{slot_id}")
-                    except Exception:
-                        pass
-        
-        if cleaned_slots:
-            self.fallback_slots = slots
-            self.save_fallback_slots()
-        
-        return cleaned_slots
-    
-    def release_fallback_slot(self, slot_type, slot_id):
-        slots = self.get_fallback_slots()
-        if slot_id in slots.get(slot_type, {}):
-            slots[slot_type][slot_id].update({
-                'available': True,
-                'assigned_at': None,
-                'expires_at': None,
-                'order_number': None,
-                'stripe_session_id': None
-            })
-            self.fallback_slots = slots
-            self.save_fallback_slots()
-    
-    def find_fallback_slot_by_order(self, order_number):
-        slots = self.get_fallback_slots()
-        for slot_type in ['monthly', 'test']:
-            for slot_id, slot_data in slots.get(slot_type, {}).items():
-                if slot_data.get('order_number') == order_number:
-                    return slot_type, slot_id, slot_data
-        return None, None, None
-
-
-class OrderBasedSlotManager(DatabaseSlotManager):
-    """Enhanced slot manager with order-number-based file naming"""
-    
-    def __init__(self):
-        super().__init__()
-        self.order_to_slot_mapping = self.load_order_mapping()
-        self.slot_to_order_mapping = {v: k for k, v in self.order_to_slot_mapping.items()}
-    
-    def load_order_mapping(self):
-        """Load order number to slot_id mapping"""
-        mapping = {}
-        
-        # Monthly mapping (slot_id -> 42XXXXXX)
-        for i in range(1, 11):
-            slot_id = f"client_{i:02d}"
-            order_number = f"42{(0x100000 + i):06X}"
-            mapping[slot_id] = order_number
-        
-        # Test mapping (slot_id -> 72XXXXXX)
-        for i in range(1, 11):
-            slot_id = f"test_{i:02d}"
-            order_number = f"72{(0x100000 + i):06X}"
-            mapping[slot_id] = order_number
-        
-        return mapping
-    
-    def get_order_number_for_slot(self, slot_id):
-        """Get the predefined order number for a slot"""
-        return self.order_to_slot_mapping.get(slot_id)
-    
-    def get_slot_for_order_number(self, order_number):
-        """Get the slot_id for a predefined order number"""
-        return self.slot_to_order_mapping.get(order_number)
-    
-    def assign_slot(self, slot_type='monthly', duration_days=30, order_number=None, stripe_session_id=None):
-        """Enhanced slot assignment using predefined order numbers"""
-        if self.use_database:
+        # Clean timers
+        for timer_id, timer_data in list(self.fallback_data.get("active_timers", {}).items()):
             try:
-                conn = self.get_connection()
-                cursor = conn.cursor()
-                
-                # Find available slot
-                cursor.execute("""
-                    SELECT slot_id FROM vpn_slots 
-                    WHERE slot_type = %s AND available = TRUE 
-                    ORDER BY slot_id LIMIT 1
-                    FOR UPDATE
-                """, (slot_type,))
-                
-                result = cursor.fetchone()
-                if not result:
-                    cursor.close()
-                    conn.close()
-                    return None
-                
-                slot_id = result[0]
-                
-                # Use predefined order number for this slot
-                predefined_order = self.get_order_number_for_slot(slot_id)
-                if not predefined_order:
-                    # Fallback to generated order if mapping fails
-                    if slot_type == 'test':
-                        predefined_order = f"72{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
-                    else:
-                        predefined_order = f"42{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
-                
-                # Calculate expiration
-                now = datetime.now()
-                if slot_type == 'test':
-                    expires_at = now + timedelta(minutes=15)
-                else:
-                    expires_at = now + timedelta(days=duration_days)
-                
-                # Update slot with predefined order number
-                cursor.execute("""
-                    UPDATE vpn_slots 
-                    SET available = FALSE, 
-                        assigned_at = %s,
-                        expires_at = %s,
-                        order_number = %s,
-                        stripe_session_id = %s,
-                        updated_at = %s
-                    WHERE slot_id = %s
-                """, (now, expires_at, predefined_order, stripe_session_id, now, slot_id))
-                
-                conn.commit()
-                cursor.close()
-                conn.close()
-                
-                print(f"[DB] ✅ Assigned {slot_type} slot {slot_id} with order: {predefined_order}")
-                return slot_id, predefined_order
-                
-            except Exception as e:
-                print(f"[DB] ❌ Error assigning slot: {e}")
-                return None
-        else:
-            return self.assign_fallback_slot_with_predefined_order(slot_type, duration_days, order_number, stripe_session_id)
-    
-    def assign_fallback_slot_with_predefined_order(self, slot_type, duration_days, order_number, stripe_session_id):
-        """Fallback slot assignment with predefined order numbers"""
-        slots = self.get_fallback_slots()
-        slot_id = self.get_fallback_available_slot(slot_type)
+                expires_at = datetime.fromisoformat(timer_data["expires_at"])
+                if now > expires_at:
+                    del self.fallback_data["active_timers"][timer_id]
+            except Exception:
+                pass
         
-        if not slot_id:
-            return None
-        
-        # Use predefined order number
-        predefined_order = self.get_order_number_for_slot(slot_id)
-        if not predefined_order:
-            if slot_type == 'test':
-                predefined_order = f"72{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
-            else:
-                predefined_order = f"42{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
-        
-        now = datetime.now()
-        if slot_type == 'test':
-            expires_at = now + timedelta(minutes=15)
-        else:
-            expires_at = now + timedelta(days=duration_days)
-        
-        slots[slot_type][slot_id].update({
-            'available': False,
-            'assigned_at': now.isoformat(),
-            'expires_at': expires_at.isoformat(),
-            'order_number': predefined_order,
-            'stripe_session_id': stripe_session_id
-        })
-        
-        self.fallback_slots = slots
-        self.save_fallback_slots()
-        
-        print(f"[FALLBACK] ✅ Assigned {slot_type} slot {slot_id} with order: {predefined_order}")
-        return slot_id, predefined_order
+        if expired_count > 0:
+            self._save_fallback_data()
+            logger.info(f"[FALLBACK] ✅ Expired {expired_count} orders")
+            
+        return expired_count
