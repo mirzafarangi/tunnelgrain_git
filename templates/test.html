@@ -58,7 +58,7 @@
                         </li>
                         <li>
                             <i class="fas fa-check"></i>
-                            Full-speed server access
+                            Full-speed server access (213.170.133.116)
                         </li>
                         <li>
                             <i class="fas fa-check"></i>
@@ -66,11 +66,15 @@
                         </li>
                         <li>
                             <i class="fas fa-check"></i>
-                            Config file + QR code
+                            Config file + QR code included
                         </li>
                         <li>
                             <i class="fas fa-check"></i>
                             Zero registration required
+                        </li>
+                        <li>
+                            <i class="fas fa-check"></i>
+                            3 free tests per day limit
                         </li>
                     </ul>
                     
@@ -87,6 +91,7 @@
                     </div>
                 </div>
                 
+                <!-- Test Result Section -->
                 <div id="testResult" class="mt-4" style="display: none;">
                     <div class="card-modern p-4">
                         <div class="d-flex align-items-center mb-3">
@@ -100,17 +105,21 @@
                             </div>
                         </div>
                         
-                        <p class="mb-3">Download your configuration files below and connect immediately:</p>
+                        <div class="mb-3">
+                            <p class="mb-2"><strong>Order Number:</strong> <code id="testOrderNumber">-</code></p>
+                            <p class="mb-3"><strong>Server IP:</strong> <code>213.170.133.116</code></p>
+                            <p class="mb-3">Download your configuration files below and connect immediately:</p>
+                        </div>
                         
                         <div class="row g-3 mb-3">
                             <div class="col-6">
-                                <a href="/download-test-config" class="btn-secondary-custom w-100 text-center">
+                                <a href="/download-test-config" class="btn-secondary-custom w-100 text-center" id="downloadConfigBtn">
                                     <i class="fas fa-file-alt me-2"></i>
                                     Config File
                                 </a>
                             </div>
                             <div class="col-6">
-                                <a href="/download-test-qr" class="btn-secondary-custom w-100 text-center">
+                                <a href="/download-test-qr" class="btn-secondary-custom w-100 text-center" id="downloadQRBtn">
                                     <i class="fas fa-qrcode me-2"></i>
                                     QR Code
                                 </a>
@@ -129,12 +138,61 @@
                     </div>
                 </div>
                 
+                <!-- Upgrade CTA -->
                 <div class="text-center mt-4">
                     <p class="text-muted mb-2">Ready for unlimited access?</p>
-                    <a href="{{ url_for('home') }}" class="btn-outline-custom">
-                        <i class="fas fa-arrow-right me-2"></i>
-                        Purchase Monthly VPN
-                    </a>
+                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                        <a href="{{ url_for('order') }}" class="btn-outline-custom">
+                            <i class="fas fa-shopping-cart me-2"></i>
+                            Browse All Plans
+                        </a>
+                        <a href="{{ url_for('pricing') }}" class="btn-secondary-custom">
+                            <i class="fas fa-tags me-2"></i>
+                            View Pricing
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Live Test Availability -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card-modern p-4 text-center">
+                    <h5 class="fw-bold mb-3">
+                        <i class="fas fa-chart-line text-primary me-2"></i>
+                        Live Test Availability
+                    </h5>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <div class="bg-light rounded p-3">
+                                <div class="fw-bold text-success" id="availableSlots">-</div>
+                                <small class="text-muted">Available Test Slots</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-light rounded p-3">
+                                <div class="fw-bold text-primary">50</div>
+                                <small class="text-muted">Total Capacity</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-light rounded p-3">
+                                <div class="fw-bold text-warning" id="dailyLimit">3</div>
+                                <small class="text-muted">Per Day Limit</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <small class="text-muted">
+                        <i class="fas fa-sync me-1"></i>
+                        Updated in real-time • Limit resets every 24 hours
+                    </small>
                 </div>
             </div>
         </div>
@@ -142,7 +200,7 @@
 </section>
 
 <!-- Setup Instructions -->
-<section class="section-padding bg-light">
+<section class="section-padding">
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="section-title">Quick Setup Guide</h2>
@@ -176,7 +234,7 @@
                             </div>
                             <div>
                                 <strong>Add Tunnel</strong><br>
-                                <small class="text-muted">Tap "+" then "Scan from QR Code" or "Create from file"</small>
+                                <small class="text-muted">Tap "+" then "Scan from QR Code" (recommended)</small>
                             </div>
                         </div>
                         
@@ -186,8 +244,8 @@
                                 3
                             </div>
                             <div>
-                                <strong>Import Config</strong><br>
-                                <small class="text-muted">Scan the QR code or select the downloaded .conf file</small>
+                                <strong>Scan QR Code</strong><br>
+                                <small class="text-muted">Use your camera to scan the downloaded QR code</small>
                             </div>
                         </div>
                         
@@ -242,7 +300,7 @@
                             </div>
                             <div>
                                 <strong>Select Config</strong><br>
-                                <small class="text-muted">Choose your downloaded tunnelgrain_test_XX.conf file</small>
+                                <small class="text-muted">Choose your downloaded .conf file</small>
                             </div>
                         </div>
                         
@@ -260,12 +318,174 @@
                 </div>
             </div>
         </div>
+    </div>
+</section>
+
+<!-- Test vs Paid Comparison -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Test vs Full Plans</h2>
+            <p class="section-subtitle">See what you get with our paid subscriptions</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-flask text-success" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Free Test</h5>
+                    <ul class="feature-list text-start mb-4">
+                        <li><i class="fas fa-check"></i>15 minutes access</li>
+                        <li><i class="fas fa-check"></i>Full WireGuard protection</li>
+                        <li><i class="fas fa-check"></i>Real server performance</li>
+                        <li><i class="fas fa-times text-muted"></i>Limited time</li>
+                        <li><i class="fas fa-times text-muted"></i>3 tests per day only</li>
+                    </ul>
+                    <div class="display-6 fw-bold text-success">FREE</div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card-modern p-4 text-center h-100 border-primary">
+                    <div class="mb-3">
+                        <i class="fas fa-calendar-alt text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Monthly Plan</h5>
+                    <ul class="feature-list text-start mb-4">
+                        <li><i class="fas fa-check"></i>30 days unlimited access</li>
+                        <li><i class="fas fa-check"></i>All devices supported</li>
+                        <li><i class="fas fa-check"></i>Technical support</li>
+                        <li><i class="fas fa-check"></i>No time restrictions</li>
+                        <li><i class="fas fa-check"></i>Dedicated config file</li>
+                    </ul>
+                    <div class="display-6 fw-bold text-primary">$4.99</div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-infinity text-warning" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Lifetime Plan</h5>
+                    <ul class="feature-list text-start mb-4">
+                        <li><i class="fas fa-check"></i>Lifetime unlimited access</li>
+                        <li><i class="fas fa-check"></i>Priority support</li>
+                        <li><i class="fas fa-check"></i>Future feature access</li>
+                        <li><i class="fas fa-check"></i>Never expires</li>
+                        <li><i class="fas fa-check"></i>Best value long-term</li>
+                    </ul>
+                    <div class="display-6 fw-bold text-warning">$99.99</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-5">
+            <a href="{{ url_for('pricing') }}" class="btn-primary-custom btn-lg">
+                <i class="fas fa-list me-2"></i>
+                View All Plans & Pricing
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="section-padding">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <p class="section-subtitle">Common questions about our free test</p>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="accordion" id="faqAccordion">
+                    <div class="accordion-item mb-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                <i class="fas fa-question-circle text-primary me-2"></i>
+                                Is the test VPN really free?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes, completely free! No credit card required, no registration, no hidden fees. 
+                                You get 15 minutes of full VPN access to test performance and compatibility.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item mb-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                <i class="fas fa-clock text-primary me-2"></i>
+                                Why only 15 minutes?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                15 minutes is enough time to test connection speed, compatibility with your devices, 
+                                and verify that our service works for your needs. It prevents abuse while giving 
+                                genuine users a proper trial experience.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item mb-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                <i class="fas fa-shield-alt text-primary me-2"></i>
+                                Do I get the same protection as paid users?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Absolutely! The test VPN uses the exact same WireGuard encryption, server infrastructure, 
+                                and security protocols as our paid plans. The only difference is the duration.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item mb-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                <i class="fas fa-devices text-primary me-2"></i>
+                                Can I test on multiple devices?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes! You can use the same config file on multiple devices during your 15-minute test. 
+                                This lets you verify compatibility across your phone, laptop, tablet, etc.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                <i class="fas fa-headset text-primary me-2"></i>
+                                What if I need help setting up?
+                            </button>
+                        </h2>
+                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Our technical support team can help you with setup via email. For test users, 
+                                we provide basic setup guidance. Paid subscribers get priority technical support.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <div class="text-center mt-5">
             <div class="card-modern p-4 d-inline-block">
                 <h6 class="fw-bold mb-2">
                     <i class="fas fa-question-circle text-primary me-2"></i>
-                    Need Help?
+                    Still Have Questions?
                 </h6>
                 <p class="text-muted mb-3">Our technical support team is ready to assist you</p>
                 <a href="{{ url_for('contact') }}" class="btn-secondary-custom">
@@ -282,6 +502,74 @@
 <script>
     let countdownTimer;
     let expiresAt;
+    
+    // Update test availability on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateTestAvailability();
+        // Update every 30 seconds
+        setInterval(updateTestAvailability, 30000);
+    });
+    
+    function updateTestAvailability() {
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                const testElement = document.getElementById('test-status');
+                const availableSlotsElement = document.getElementById('availableSlots');
+                
+                if (data.tiers && data.tiers.test) {
+                    const available = data.tiers.test.available;
+                    const capacity = data.tiers.test.capacity;
+                    const percentage = capacity > 0 ? (available / capacity) * 100 : 0;
+                    
+                    let statusClass, dotClass, statusText;
+                    if (percentage > 50) {
+                        statusClass = 'status-online';
+                        dotClass = 'online';
+                        statusText = `${available} test slots available`;
+                    } else if (percentage > 20) {
+                        statusClass = 'status-busy';
+                        dotClass = 'busy';
+                        statusText = `${available} test slots remaining`;
+                    } else if (available > 0) {
+                        statusClass = 'status-busy';
+                        dotClass = 'busy';
+                        statusText = `Only ${available} test slots left`;
+                    } else {
+                        statusClass = 'status-offline';
+                        dotClass = 'offline';
+                        statusText = 'Test slots temporarily full';
+                    }
+                    
+                    if (testElement) {
+                        testElement.innerHTML = `
+                            <div class="status-indicator ${statusClass}">
+                                <span class="status-dot ${dotClass}"></span>
+                                ${statusText}
+                            </div>
+                        `;
+                    }
+                    
+                    if (availableSlotsElement) {
+                        availableSlotsElement.textContent = available;
+                        availableSlotsElement.className = available > 10 ? 'fw-bold text-success' : 
+                                                         available > 5 ? 'fw-bold text-warning' : 'fw-bold text-danger';
+                    }
+                }
+            })
+            .catch(err => {
+                console.log('Status update failed:', err);
+                const testElement = document.getElementById('test-status');
+                if (testElement) {
+                    testElement.innerHTML = `
+                        <div class="status-indicator status-busy">
+                            <span class="status-dot busy"></span>
+                            Loading availability...
+                        </div>
+                    `;
+                }
+            });
+    }
     
     async function getTestVPN() {
         const btn = document.getElementById('getTestBtn');
@@ -310,6 +598,11 @@
             
             // Show success and download section
             showNotification('success', 'Test VPN Ready!', 'Your 15-minute trial is now active. Download your configuration files below.');
+            
+            // Update order number
+            document.getElementById('testOrderNumber').textContent = data.order_number;
+            
+            // Show result section
             document.getElementById('testResult').style.display = 'block';
             btn.style.display = 'none';
             
@@ -323,12 +616,40 @@
                 block: 'center' 
             });
             
+            // Add download button event listeners
+            setupDownloadButtons();
+            
         } catch (error) {
             console.error('Error:', error);
             showNotification('error', 'Connection Error', 'Please check your internet connection and try again.');
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
+    }
+    
+    function setupDownloadButtons() {
+        const downloadButtons = document.querySelectorAll('#downloadConfigBtn, #downloadQRBtn');
+        downloadButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Downloading...';
+                this.style.pointerEvents = 'none';
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-check me-2"></i>Downloaded!';
+                    this.classList.remove('btn-secondary-custom');
+                    this.classList.add('btn-success');
+                    
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.style.pointerEvents = 'auto';
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-secondary-custom');
+                    }, 2000);
+                }, 1000);
+            });
+        });
     }
     
     function startCountdown() {
@@ -350,14 +671,21 @@
                         <p class="text-muted mb-4">
                             Your 15-minute test has ended. Ready for unlimited access?
                         </p>
-                        <a href="${"{{ url_for('home') }}"}" class="btn-primary-custom">
-                            <i class="fas fa-credit-card me-2"></i>
-                            Purchase Monthly VPN
-                        </a>
+                        <div class="d-flex gap-3 justify-content-center flex-wrap">
+                            <a href="${'{{ url_for("order") }}'}" class="btn-primary-custom">
+                                <i class="fas fa-credit-card me-2"></i>
+                                Purchase VPN Plan
+                            </a>
+                            <button onclick="location.reload()" class="btn-secondary-custom">
+                                <i class="fas fa-redo me-2"></i>
+                                Get Another Test
+                            </button>
+                        </div>
                     </div>
                 `;
                 
-                showNotification('info', 'Test Expired', 'Your 15-minute trial has ended. Purchase monthly access for unlimited use.');
+                showNotification('info', 'Test Expired', 'Your 15-minute trial has ended. Purchase a plan for unlimited access.');
+                updateTestAvailability(); // Refresh availability
                 return;
             }
             
@@ -415,5 +743,18 @@
             }
         }, 5000);
     }
+    
+    // Add visual feedback for accordion items
+    document.addEventListener('DOMContentLoaded', function() {
+        const accordionButtons = document.querySelectorAll('.accordion-button');
+        accordionButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Add a small delay for the animation
+                setTimeout(() => {
+                    this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            });
+        });
+    });
 </script>
 {% endblock %}
