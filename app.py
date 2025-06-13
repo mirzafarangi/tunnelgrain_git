@@ -10,7 +10,6 @@ import uuid
 import hashlib
 from functools import wraps
 from collections import defaultdict
-from database_manager import EnhancedVPNManager
 import logging
 from dotenv import load_dotenv
 
@@ -37,18 +36,93 @@ else:
     stripe.api_key = STRIPE_SECRET_KEY
     logger.info("✅ Stripe configured successfully")
 
-# Admin security key
-ADMIN_KEY = os.environ.get('ADMIN_KEY', 'tunnelgrain_admin_secret_2024_xyz')
+# Admin security key from environment
+ADMIN_KEY = os.environ.get('ADMIN_KEY', 'Freud@')
 
-# Paths for local config storage (your existing structure)
-LOCAL_CONFIG_BASE = 'data'
-QR_CODE_BASE = 'static/qr_codes'
+# VPS Configuration
+VPS_ENDPOINT = os.environ.get('VPS_1_ENDPOINT', 'http://213.170.133.116:8080')
+VPS_NAME = os.environ.get('VPS_1_NAME', 'primary_vps')
+
+# Service Tiers - MUST MATCH YOUR VPS SETUP EXACTLY
+SERVICE_TIERS = {
+    'test': {
+        'name': 'Free Test',
+        'duration_days': 0,  # 15 minutes
+        'price_cents': 0,
+        'description': '15-minute free trial',
+        'order_prefix': '72',
+        'capacity': 50
+    },
+    'monthly': {
+        'name': 'Monthly VPN',
+        'duration_days': 30,
+        'price_cents': 499,  # $4.99
+        'description': '30 days unlimited access',
+        'order_prefix': '42',
+        'capacity': 30
+    },
+    'quarterly': {
+        'name': '3-Month VPN',
+        'duration_days': 90,
+        'price_cents': 1299,  # $12.99
+        'description': '90 days unlimited access',
+        'order_prefix': '42',
+        'capacity': 20
+    },
+    'biannual': {
+        'name': '6-Month VPN',
+        'duration_days': 180,
+        'price_cents': 2399,  # $23.99
+        'description': '180 days unlimited access',
+        'order_prefix': '42',
+        'capacity': 15
+    },
+    'annual': {
+        'name': '12-Month VPN',
+        'duration_days': 365,
+        'price_cents': 3999,  # $39.99
+        'description': '365 days unlimited access',
+        'order_prefix': '42',
+        'capacity': 10
+    },
+    'lifetime': {
+        'name': 'Lifetime VPN',
+        'duration_days': 36500,  # 100 years
+        'price_cents': 9999,  # $99.99
+        'description': 'Lifetime unlimited access',
+        'order_prefix': '42',
+        'capacity': 5
+    }
+}
 
 # Abuse Prevention - In-memory tracking
 test_usage_tracker = defaultdict(list)
 
-# Initialize Enhanced VPN Manager
-vpn_manager = EnhancedVPNManager()
+# Simple slot tracking for fallback (if database not available)
+SLOTS_FILE = 'enhanced_slots.json'
+
+def load_slots_data():
+    """Load slots data from JSON file"""
+    if os.path.exists(SLOTS_FILE):
+        try:
+            with open(SLOTS_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading slots: {e}")
+    
+    # Create initial structure
+    return {
+        "orders": {},
+        "last_cleanup": datetime.now().isoformat()
+    }
+
+def save_slots_data(data):
+    """Save slots data to JSON file"""
+    try:
+        with open(SLOTS_FILE, 'w') as f:
+            json.dump(data, f, indent=2, default=str)
+    except Exception as e:
+        logger.error(f"Error saving slots: {e}")
 
 # Admin authentication decorator
 def admin_required(f):
@@ -56,6 +130,7 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         provided_key = request.args.get('key') or request.headers.get('X-Admin-Key')
         if provided_key != ADMIN_KEY:
+            logger.warning(f"Admin access denied. Expected: {ADMIN_KEY}, Got: {provided_key}")
             abort(404)  # Return 404 instead of 403 to hide existence
         return f(*args, **kwargs)
     return decorated_function
@@ -91,20 +166,95 @@ def check_test_vpn_abuse(request):
     
     return True, f"Test VPN granted. {3 - len(test_usage_tracker[fingerprint])} remaining today."
 
-def get_config_path(vps_name: str, ip_address: str, tier: str, order_number: str, file_type: str = 'config'):
-    """Get path to config or QR code file based on your existing structure"""
-    if file_type == 'config':
-        return f"{LOCAL_CONFIG_BASE}/{vps_name}/ip_{ip_address}/{tier}/{order_number}.conf"
-    else:  # QR code
-        return f"{QR_CODE_BASE}/{vps_name}/ip_{ip_address}/{tier}/{order_number}.png"
+def generate_order_number(tier: str) -> str:
+    """Generate order number with tier-specific prefix"""
+    tier_config = SERVICE_TIERS.get(tier, {})
+    prefix = tier_config.get('order_prefix', '42')
+    return f"{prefix}{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
+
+def get_vps_status():
+    """Get status from VPS API"""
+    try:
+        import requests
+        response = requests.get(f"{VPS_ENDPOINT}/api/status", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        logger.error(f"VPS status error: {e}")
+    
+    return None
+
+def assign_vpn_slot(tier: str, user_fingerprint: str):
+    """Assign VPN slot - simplified version"""
+    try:
+        # Load current data
+        slots_data = load_slots_data()
+        
+        # Generate order details
+        order_id = str(uuid.uuid4())
+        order_number = generate_order_number(tier)
+        
+        # Calculate expiration
+        now = datetime.now()
+        if tier == 'test':
+            expires_at = now + timedelta(minutes=15)
+        else:
+            tier_config = SERVICE_TIERS[tier]
+            expires_at = now + timedelta(days=tier_config['duration_days'])
+        
+        # Store order
+        slots_data["orders"][order_id] = {
+            "order_number": order_number,
+            "tier": tier,
+            "ip_address": "213.170.133.116",  # Your VPS IP
+            "vps_name": VPS_NAME,
+            "status": "active",
+            "assigned_at": now.isoformat(),
+            "expires_at": expires_at.isoformat(),
+            "user_fingerprint": user_fingerprint
+        }
+        
+        save_slots_data(slots_data)
+        
+        logger.info(f"Assigned {tier} slot {order_number} to {user_fingerprint}")
+        return order_id, order_number
+        
+    except Exception as e:
+        logger.error(f"Error assigning slot: {e}")
+        return None
+
+def cleanup_expired_orders():
+    """Clean up expired orders"""
+    try:
+        slots_data = load_slots_data()
+        now = datetime.now()
+        expired_count = 0
+        
+        for order_id, order_data in list(slots_data["orders"].items()):
+            if order_data.get("status") == "active":
+                try:
+                    expires_at = datetime.fromisoformat(order_data["expires_at"])
+                    if now > expires_at:
+                        order_data["status"] = "expired"
+                        expired_count += 1
+                except Exception:
+                    pass
+        
+        if expired_count > 0:
+            save_slots_data(slots_data)
+            logger.info(f"Expired {expired_count} orders")
+            
+        return expired_count
+    except Exception as e:
+        logger.error(f"Cleanup error: {e}")
+        return 0
 
 # === MAIN ROUTES ===
 
 @app.route('/')
 def home():
-    """Enhanced home page with multi-tier pricing"""
-    service_tiers = vpn_manager.get_service_tiers()
-    return render_template('home.html', service_tiers=service_tiers)
+    """Home page with all service tiers"""
+    return render_template('home.html', service_tiers=SERVICE_TIERS)
 
 @app.route('/test')
 def test():
@@ -113,23 +263,23 @@ def test():
 
 @app.route('/pricing')
 def pricing():
-    """Dedicated pricing page with all tiers"""
-    service_tiers = vpn_manager.get_service_tiers()
-    return render_template('pricing.html', service_tiers=service_tiers)
+    """Pricing page with all tiers"""
+    return render_template('pricing.html', service_tiers=SERVICE_TIERS)
 
 @app.route('/order')
 def order():
-    """Order selection page with IP choice"""
-    service_tiers = vpn_manager.get_service_tiers()
-    
-    # Get available IPs for each tier (excluding test)
-    available_ips = {}
-    for tier_name in service_tiers.keys():
-        if tier_name != 'test':  # Test doesn't need IP selection
-            available_ips[tier_name] = vpn_manager.get_available_ips_for_tier(tier_name)
+    """Order page for purchasing VPN"""
+    # Get available IPs (simplified - just your one VPS)
+    available_ips = {
+        'monthly': [{'ip_address': '213.170.133.116', 'vps_name': VPS_NAME, 'available_slots': 30}],
+        'quarterly': [{'ip_address': '213.170.133.116', 'vps_name': VPS_NAME, 'available_slots': 20}],
+        'biannual': [{'ip_address': '213.170.133.116', 'vps_name': VPS_NAME, 'available_slots': 15}],
+        'annual': [{'ip_address': '213.170.133.116', 'vps_name': VPS_NAME, 'available_slots': 10}],
+        'lifetime': [{'ip_address': '213.170.133.116', 'vps_name': VPS_NAME, 'available_slots': 5}],
+    }
     
     return render_template('order.html', 
-                         service_tiers=service_tiers, 
+                         service_tiers=SERVICE_TIERS, 
                          available_ips=available_ips,
                          stripe_publishable_key=STRIPE_PUBLISHABLE_KEY)
 
@@ -153,8 +303,7 @@ def order_lookup():
 @app.route('/get-test-vpn', methods=['POST'])
 def get_test_vpn():
     """Assign a 15-minute test VPN with abuse prevention"""
-    # Cleanup expired orders first
-    vpn_manager.cleanup_expired_orders()
+    cleanup_expired_orders()
     
     # Check for abuse
     allowed, message = check_test_vpn_abuse(request)
@@ -164,24 +313,10 @@ def get_test_vpn():
             'limit_info': message
         }), 429
     
-    # Get available test IPs
-    available_ips = vpn_manager.get_available_ips_for_tier('test')
-    if not available_ips:
-        return jsonify({
-            'error': 'No test slots available. Please try again in a few minutes.'
-        }), 503
-    
-    # Select IP with most available slots
-    selected_ip = available_ips[0]
     user_fingerprint = get_client_fingerprint(request)
     
     # Assign slot
-    result = vpn_manager.assign_vpn_slot(
-        tier='test',
-        ip_address=selected_ip['ip_address'],
-        vps_name=selected_ip['vps_name'],
-        user_fingerprint=user_fingerprint
-    )
+    result = assign_vpn_slot('test', user_fingerprint)
     
     if not result:
         return jsonify({
@@ -194,8 +329,6 @@ def get_test_vpn():
     session['test_slot'] = order_id
     session['test_order'] = order_number
     session['test_expires'] = (datetime.now() + timedelta(minutes=15)).isoformat()
-    session['test_ip'] = selected_ip['ip_address']
-    session['test_vps'] = selected_ip['vps_name']
     
     logger.info(f"[TEST] User {user_fingerprint} assigned {order_number}")
     
@@ -205,8 +338,7 @@ def get_test_vpn():
         'order_number': order_number,
         'expires_in_minutes': 15,
         'download_url': url_for('download_test_config'),
-        'usage_info': message,
-        'ip_address': selected_ip['ip_address']
+        'usage_info': message
     })
 
 @app.route('/create-checkout-session', methods=['POST'])
@@ -215,24 +347,13 @@ def create_checkout_session():
     try:
         data = request.json
         tier = data.get('tier')
-        ip_address = data.get('ip_address')
+        ip_address = data.get('ip_address', '213.170.133.116')
         
         # Validate tier
-        tier_config = vpn_manager.get_tier_config(tier)
-        if not tier_config or tier == 'test':
+        if tier not in SERVICE_TIERS or tier == 'test':
             return jsonify({'error': 'Invalid service tier'}), 400
         
-        if not ip_address:
-            return jsonify({'error': 'IP address selection required'}), 400
-        
-        # Check if IP has available slots
-        available_ips = vpn_manager.get_available_ips_for_tier(tier)
-        selected_ip_data = next((ip for ip in available_ips if ip['ip_address'] == ip_address), None)
-        
-        if not selected_ip_data:
-            return jsonify({
-                'error': f'Selected IP {ip_address} not available for {tier} tier'
-            }), 503
+        tier_config = SERVICE_TIERS[tier]
         
         # Create Stripe checkout session
         checkout_session = stripe.checkout.Session.create(
@@ -254,7 +375,7 @@ def create_checkout_session():
             metadata={
                 'tier': tier,
                 'ip_address': ip_address,
-                'vps_name': selected_ip_data['vps_name']
+                'vps_name': VPS_NAME
             }
         )
         
@@ -266,7 +387,7 @@ def create_checkout_session():
 
 @app.route('/payment-success')
 def payment_success():
-    """Handle successful payment with enhanced order tracking"""
+    """Handle successful payment"""
     session_id = request.args.get('session_id')
     
     if not session_id:
@@ -285,29 +406,9 @@ def payment_success():
         ip_address = metadata.get('ip_address')
         vps_name = metadata.get('vps_name')
         
-        # Check if already processed (prevent duplicate assignments)
-        existing_order = vpn_manager.find_order_by_stripe_session(session_id)
-        if existing_order:
-            # Already processed - show success page
-            session['purchase_order'] = existing_order['order_number']
-            session['purchase_tier'] = tier
-            session['purchase_ip'] = ip_address
-            session['purchase_vps'] = vps_name
-            
-            logger.info(f"[PAYMENT] Returning existing order: {existing_order['order_number']}")
-            return render_template('payment_success.html', 
-                                 order_data=existing_order, 
-                                 tier_config=vpn_manager.get_tier_config(tier))
-        
-        # First time processing - assign new slot
+        # Assign new slot
         user_fingerprint = get_client_fingerprint(request)
-        result = vpn_manager.assign_vpn_slot(
-            tier=tier,
-            ip_address=ip_address,
-            vps_name=vps_name,
-            stripe_session_id=session_id,
-            user_fingerprint=user_fingerprint
-        )
+        result = assign_vpn_slot(tier, user_fingerprint)
         
         if result:
             order_id, order_number = result
@@ -326,11 +427,11 @@ def payment_success():
                 'vps_name': vps_name
             }
             
-            logger.info(f"[PAYMENT] New assignment: {order_number}, tier: {tier}, IP: {ip_address}")
+            logger.info(f"[PAYMENT] New assignment: {order_number}, tier: {tier}")
             
             return render_template('payment_success.html', 
                                  order_data=order_data, 
-                                 tier_config=vpn_manager.get_tier_config(tier))
+                                 tier_config=SERVICE_TIERS[tier])
         else:
             logger.error(f"[PAYMENT] Failed to assign slot for session {session_id}")
             return "No slots available - contact support", 503
@@ -348,17 +449,25 @@ def download_test_config():
         return "No test VPN assigned", 404
     
     order_number = session['test_order']
-    ip_address = session.get('test_ip')
-    vps_name = session.get('test_vps')
     
-    # Get config file path
-    config_path = get_config_path(vps_name, ip_address, 'test', order_number, 'config')
-    
-    if not os.path.exists(config_path):
-        return "Config file not found. Please contact support.", 404
-    
-    return send_file(config_path, as_attachment=True, 
-                    download_name=f'tunnelgrain_{order_number}.conf')
+    # Config file should be downloaded from VPS or stored locally
+    # For now, serve from VPS API
+    try:
+        import requests
+        config_url = f"{VPS_ENDPOINT}/api/config/test/{order_number}"
+        response = requests.get(config_url, timeout=30)
+        
+        if response.status_code == 200:
+            return response.content, 200, {
+                'Content-Type': 'application/octet-stream',
+                'Content-Disposition': f'attachment; filename=tunnelgrain_{order_number}.conf'
+            }
+        else:
+            return "Config file not found. Please contact support.", 404
+            
+    except Exception as e:
+        logger.error(f"Error downloading test config: {e}")
+        return "Config file not available. Please contact support.", 500
 
 @app.route('/download-test-qr')
 def download_test_qr():
@@ -367,17 +476,23 @@ def download_test_qr():
         return "No test VPN assigned", 404
     
     order_number = session['test_order']
-    ip_address = session.get('test_ip')
-    vps_name = session.get('test_vps')
     
-    # Get QR code file path
-    qr_path = get_config_path(vps_name, ip_address, 'test', order_number, 'qr')
-    
-    if not os.path.exists(qr_path):
-        return "QR code not found. Please contact support.", 404
-    
-    return send_file(qr_path, as_attachment=True, 
-                    download_name=f'tunnelgrain_{order_number}_qr.png')
+    try:
+        import requests
+        qr_url = f"{VPS_ENDPOINT}/api/qr/test/{order_number}"
+        response = requests.get(qr_url, timeout=30)
+        
+        if response.status_code == 200:
+            return response.content, 200, {
+                'Content-Type': 'image/png',
+                'Content-Disposition': f'attachment; filename=tunnelgrain_{order_number}_qr.png'
+            }
+        else:
+            return "QR code not found. Please contact support.", 404
+            
+    except Exception as e:
+        logger.error(f"Error downloading test QR: {e}")
+        return "QR code not available. Please contact support.", 500
 
 @app.route('/download-purchase-config')
 def download_purchase_config():
@@ -387,17 +502,23 @@ def download_purchase_config():
     
     order_number = session['purchase_order']
     tier = session.get('purchase_tier')
-    ip_address = session.get('purchase_ip')
-    vps_name = session.get('purchase_vps')
     
-    # Get config file path
-    config_path = get_config_path(vps_name, ip_address, tier, order_number, 'config')
-    
-    if not os.path.exists(config_path):
-        return "Config file not found. Please contact support.", 404
-    
-    return send_file(config_path, as_attachment=True, 
-                    download_name=f'tunnelgrain_{order_number}.conf')
+    try:
+        import requests
+        config_url = f"{VPS_ENDPOINT}/api/config/{tier}/{order_number}"
+        response = requests.get(config_url, timeout=30)
+        
+        if response.status_code == 200:
+            return response.content, 200, {
+                'Content-Type': 'application/octet-stream',
+                'Content-Disposition': f'attachment; filename=tunnelgrain_{order_number}.conf'
+            }
+        else:
+            return "Config file not found. Please contact support.", 404
+            
+    except Exception as e:
+        logger.error(f"Error downloading purchase config: {e}")
+        return "Config file not available. Please contact support.", 500
 
 @app.route('/download-purchase-qr')
 def download_purchase_qr():
@@ -407,17 +528,23 @@ def download_purchase_qr():
     
     order_number = session['purchase_order']
     tier = session.get('purchase_tier')
-    ip_address = session.get('purchase_ip')
-    vps_name = session.get('purchase_vps')
     
-    # Get QR code file path
-    qr_path = get_config_path(vps_name, ip_address, tier, order_number, 'qr')
-    
-    if not os.path.exists(qr_path):
-        return "QR code not found. Please contact support.", 404
-    
-    return send_file(qr_path, as_attachment=True, 
-                    download_name=f'tunnelgrain_{order_number}_qr.png')
+    try:
+        import requests
+        qr_url = f"{VPS_ENDPOINT}/api/qr/{tier}/{order_number}"
+        response = requests.get(qr_url, timeout=30)
+        
+        if response.status_code == 200:
+            return response.content, 200, {
+                'Content-Type': 'image/png',
+                'Content-Disposition': f'attachment; filename=tunnelgrain_{order_number}_qr.png'
+            }
+        else:
+            return "QR code not found. Please contact support.", 404
+            
+    except Exception as e:
+        logger.error(f"Error downloading purchase QR: {e}")
+        return "QR code not available. Please contact support.", 500
 
 # === ORDER LOOKUP ===
 
@@ -431,10 +558,16 @@ def check_order():
         return jsonify({'error': 'Invalid order number format'})
     
     # Clean up expired orders first
-    vpn_manager.cleanup_expired_orders()
+    cleanup_expired_orders()
     
-    # Find order
-    order_data = vpn_manager.get_order_status(order_number)
+    # Find order in slots data
+    slots_data = load_slots_data()
+    order_data = None
+    
+    for order_id, data in slots_data["orders"].items():
+        if data.get("order_number") == order_number:
+            order_data = data
+            break
     
     if not order_data:
         return jsonify({
@@ -472,127 +605,59 @@ def check_order():
             status = 'unknown'
             time_remaining = 'Unknown'
     
-    # Generate download URLs if order is active
-    download_urls = {}
-    if status == 'active':
-        # Store in session temporarily for download access
-        session[f'recovery_{order_number}_tier'] = order_data['tier']
-        session[f'recovery_{order_number}_ip'] = order_data['ip_address']
-        session[f'recovery_{order_number}_vps'] = order_data['vps_name']
-        
-        download_urls = {
-            'config_url': url_for('download_recovery_config', order_number=order_number),
-            'qr_url': url_for('download_recovery_qr', order_number=order_number)
-        }
-    
     # Get tier information
-    tier_info = vpn_manager.get_tier_config(order_data['tier'])
+    tier_info = SERVICE_TIERS.get(order_data['tier'], {})
     
     return jsonify({
         'order_found': True,
         'tier': order_data['tier'],
-        'tier_name': tier_info.get('name', 'Unknown') if tier_info else 'Unknown',
+        'tier_name': tier_info.get('name', 'Unknown'),
         'status': status,
         'time_remaining': time_remaining,
         'assigned_at': order_data.get('assigned_at', 'unknown'),
-        'ip_address': order_data.get('ip_address', 'unknown'),
-        'download_urls': download_urls
+        'ip_address': order_data.get('ip_address', 'unknown')
     })
-
-# === RECOVERY DOWNLOAD ROUTES ===
-
-@app.route('/recovery/<order_number>/config')
-def download_recovery_config(order_number):
-    """Download config file via order number recovery"""
-    if f'recovery_{order_number}_tier' not in session:
-        return "Recovery session expired. Please check order again.", 404
-    
-    tier = session[f'recovery_{order_number}_tier']
-    ip_address = session[f'recovery_{order_number}_ip']
-    vps_name = session[f'recovery_{order_number}_vps']
-    
-    config_path = get_config_path(vps_name, ip_address, tier, order_number, 'config')
-    
-    if not os.path.exists(config_path):
-        return "Config file not found", 404
-    
-    return send_file(config_path, as_attachment=True, 
-                    download_name=f'tunnelgrain_{order_number}.conf')
-
-@app.route('/recovery/<order_number>/qr')
-def download_recovery_qr(order_number):
-    """Download QR code via order number recovery"""
-    if f'recovery_{order_number}_tier' not in session:
-        return "Recovery session expired. Please check order again.", 404
-    
-    tier = session[f'recovery_{order_number}_tier']
-    ip_address = session[f'recovery_{order_number}_ip']
-    vps_name = session[f'recovery_{order_number}_vps']
-    
-    qr_path = get_config_path(vps_name, ip_address, tier, order_number, 'qr')
-    
-    if not os.path.exists(qr_path):
-        return "QR code not found", 404
-    
-    return send_file(qr_path, as_attachment=True, 
-                    download_name=f'tunnelgrain_{order_number}_qr.png')
 
 # === ADMIN ROUTES ===
 
 @app.route('/admin')
 @admin_required
 def admin():
-    """Main admin panel for order monitoring"""
-    # Get recent orders from database
-    vpn_manager.cleanup_expired_orders()
+    """Main admin panel"""
+    cleanup_expired_orders()
     
     # Get VPS status
-    vps_report = vpn_manager.get_vps_status_report()
+    vps_status = get_vps_status()
+    
+    # Get current orders
+    slots_data = load_slots_data()
     
     return render_template('admin.html', 
-                         vps_report=vps_report,
-                         service_tiers=vpn_manager.get_service_tiers())
+                         vps_report={'vps_status': {VPS_NAME: vps_status} if vps_status else {}},
+                         service_tiers=SERVICE_TIERS,
+                         orders=slots_data.get('orders', {}))
 
 @app.route('/admin/servers')
 @admin_required
 def admin_servers():
     """VPS health monitoring dashboard"""
-    vps_report = vpn_manager.get_vps_status_report()
+    vps_status = get_vps_status()
+    vps_report = {
+        'vps_status': {VPS_NAME: vps_status} if vps_status else {},
+        'summary': {
+            'total_vps': 1,
+            'revenue_potential': sum(tier['price_cents'] * tier['capacity'] 
+                                   for tier in SERVICE_TIERS.values() if tier['price_cents'] > 0)
+        }
+    }
     return render_template('admin_servers.html', vps_report=vps_report)
-
-@app.route('/admin/database-reset', methods=['POST'])
-@admin_required
-def database_reset():
-    """DANGER: Reset database (admin only)"""
-    reset_type = request.form.get('reset_type', 'clear_assignments')
-    
-    try:
-        success = vpn_manager.force_database_reset(reset_type)
-        
-        if success:
-            return jsonify({
-                'success': True,
-                'message': f'Database {reset_type} completed successfully'
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Database reset failed'
-            }), 500
-            
-    except Exception as e:
-        logger.error(f"[ADMIN] Database reset error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
 @app.route('/admin/force-cleanup', methods=['POST'])
 @admin_required
 def admin_force_cleanup():
     """Force cleanup of expired orders"""
     try:
-        expired_count = vpn_manager.cleanup_expired_orders()
+        expired_count = cleanup_expired_orders()
         
         return jsonify({
             'success': True,
@@ -613,28 +678,29 @@ def admin_force_cleanup():
 def api_status():
     """Public API endpoint for service status"""
     try:
-        # Get VPS status
-        vps_report = vpn_manager.get_vps_status_report()
+        vps_status = get_vps_status()
         
-        # Calculate available slots per tier
+        # Build tier availability from VPS status or fallback
         tier_availability = {}
-        service_tiers = vpn_manager.get_service_tiers()
-        
-        for tier_name in service_tiers.keys():
-            available_ips = vpn_manager.get_available_ips_for_tier(tier_name)
-            total_available = sum(ip['available_slots'] for ip in available_ips)
+        for tier_name, tier_config in SERVICE_TIERS.items():
+            if vps_status and 'tiers' in vps_status:
+                vps_tier_data = vps_status['tiers'].get(tier_name, {})
+                available = vps_tier_data.get('available', tier_config['capacity'])
+            else:
+                available = tier_config['capacity']
+            
             tier_availability[tier_name] = {
-                'available': total_available,
-                'ips': len(available_ips),
-                'capacity': service_tiers[tier_name]['capacity']
+                'available': available,
+                'capacity': tier_config['capacity'],
+                'price_cents': tier_config['price_cents']
             }
         
         return jsonify({
             'status': 'operational',
             'timestamp': datetime.now().isoformat(),
             'tiers': tier_availability,
-            'vps_count': len(vps_report['vps_status']),
-            'database_type': 'PostgreSQL' if vpn_manager.use_database else 'JSON Fallback'
+            'vps_count': 1,
+            'database_type': 'JSON Fallback'
         })
         
     except Exception as e:
@@ -644,33 +710,6 @@ def api_status():
             'error': str(e)
         }), 500
 
-@app.route('/api/tiers')
-def api_tiers():
-    """Public API endpoint for service tiers"""
-    try:
-        service_tiers = vpn_manager.get_service_tiers()
-        
-        # Add availability information
-        tiers_with_availability = {}
-        for tier_name, tier_config in service_tiers.items():
-            available_ips = vpn_manager.get_available_ips_for_tier(tier_name)
-            total_available = sum(ip['available_slots'] for ip in available_ips)
-            
-            tiers_with_availability[tier_name] = {
-                **tier_config,
-                'available_slots': total_available,
-                'available_ips': len(available_ips)
-            }
-        
-        return jsonify({
-            'tiers': tiers_with_availability,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"[API] Tiers error: {e}")
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/health')
 def api_health():
     """Health check endpoint"""
@@ -679,7 +718,7 @@ def api_health():
         'service': 'tunnelgrain-enhanced',
         'version': '3.0.0',
         'timestamp': datetime.now().isoformat(),
-        'database': 'connected' if vpn_manager.use_database else 'fallback'
+        'admin_key_configured': bool(ADMIN_KEY)
     })
 
 # === ERROR HANDLERS ===
@@ -693,35 +732,16 @@ def internal_error(error):
     logger.error(f"Internal error: {error}")
     return render_template('500.html'), 500
 
-# === DEVELOPMENT/DEBUG ROUTES ===
-
-@app.route('/debug/info')
-def debug_info():
-    """Debug information (only in development)"""
-    if app.debug or os.environ.get('FLASK_ENV') == 'development':
-        return jsonify({
-            'environment': os.environ.get('FLASK_ENV', 'production'),
-            'database_configured': bool(vpn_manager.use_database),
-            'stripe_configured': bool(STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY),
-            'vps_endpoints': list(vpn_manager.vps_endpoints.keys()),
-            'service_tiers': list(vpn_manager.get_service_tiers().keys()),
-            'local_config_base': LOCAL_CONFIG_BASE,
-            'session_data': dict(session)
-        })
-    else:
-        abort(404)
-
 if __name__ == '__main__':
     # Create directories if they don't exist
-    os.makedirs(LOCAL_CONFIG_BASE, exist_ok=True)
-    os.makedirs(QR_CODE_BASE, exist_ok=True)
     os.makedirs('templates', exist_ok=True)
     os.makedirs('static', exist_ok=True)
     
     # Log startup information
-    logger.info("🚀 Tunnelgrain Enhanced VPN Service Starting...")
-    logger.info(f"Database: {'PostgreSQL' if vpn_manager.use_database else 'JSON Fallback'}")
+    logger.info("🚀 Tunnelgrain VPN Service Starting...")
+    logger.info(f"Admin Key: {'Configured' if ADMIN_KEY else 'Not Set'}")
     logger.info(f"Stripe: {'Configured' if STRIPE_PUBLISHABLE_KEY else 'Not Configured'}")
-    logger.info(f"Service Tiers: {list(vpn_manager.get_service_tiers().keys())}")
+    logger.info(f"VPS Endpoint: {VPS_ENDPOINT}")
+    logger.info(f"Service Tiers: {list(SERVICE_TIERS.keys())}")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
