@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - Tunnelgrain{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 text-center">
+                <div class="card-modern p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+                    </div>
+                    
+                    <h1 class="display-4 fw-bold text-warning mb-3">500</h1>
+                    <h4 class="fw-bold mb-3">Internal Server Error</h4>
+                    <p class="text-muted mb-4">
+                        Something went wrong on our end. Our technical team has been notified 
+                        and is working to fix the issue. Please try again in a few minutes.
+                    </p>
+                    
+                    <div class="d-flex gap-3 justify-content-center flex-wrap mb-4">
+                        <a href="{{ url_for('home') }}" class="btn-primary-custom">
+                            <i class="fas fa-home me-2"></i>
+                            Go Home
+                        </a>
+                        <a href="{{ url_for('contact') }}" class="btn-secondary-custom">
+                            <i class="fas fa-headset me-2"></i>
+                            Contact Support
+                        </a>
+                    </div>
+                    
+                    <div class="bg-light rounded p-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            If this problem persists, please contact our support team with details about what you were trying to do.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}VPS Health Dashboard - Tunnelgrain Admin{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h1 class="section-title mb-2">
+                    <i class="fas fa-server text-primary me-3"></i>
+                    VPS Health Dashboard
+                </h1>
+                <p class="text-muted">Real-time monitoring of all VPS servers and their capacity</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('admin') }}" class="btn-secondary-custom">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Orders
+                </a>
+                <button class="btn-secondary-custom" onclick="window.location.reload()">
+                    <i class="fas fa-sync me-2"></i>Refresh Data
+                </button>
+            </div>
+        </div>
+        
+        <!-- Overall Status Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total VPS</h6>
+                            <h3 class="fw-bold text-primary mb-0">
+                                {{ vps_report.summary.total_vps or 0 }}
+                            </h3>
+                            <small class="text-muted">Servers</small>
+                        </div>
+                        <div class="text-primary opacity-75">
+                            <i class="fas fa-server" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Revenue Potential</h6>
+                            <h3 class="fw-bold text-success mb-0">
+                                ${{ "%.0f"|format((vps_report.summary.revenue_potential or 0) / 100) }}
+                            </h3>
+                            <small class="text-muted">Monthly</small>
+                        </div>
+                        <div class="text-success opacity-75">
+                            <i class="fas fa-dollar-sign" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Active Orders</h6>
+                            <h3 class="fw-bold text-warning mb-0">
+                                {{ vps_report.summary.active_orders or 0 }}
+                            </h3>
+                            <small class="text-muted">Currently</small>
+                        </div>
+                        <div class="text-warning opacity-75">
+                            <i class="fas fa-users" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Database</h6>
+                            <h3 class="fw-bold text-info mb-0">
+                                {% if vps_report.summary.current_revenue_cents is defined %}
+                                PG
+                                {% else %}
+                                JSON
+                                {% endif %}
+                            </h3>
+                            <small class="text-muted">Storage</small>
+                        </div>
+                        <div class="text-info opacity-75">
+                            <i class="fas fa-database" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- VPS Status Reports -->
+        {% for vps_name, vps_data in vps_report.vps_status.items() %}
+        <div class="card-modern mb-5">
+            <div class="card-header p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="fw-bold mb-1">
+                            <i class="fas fa-server me-2"></i>
+                            {{ vps_name.upper() }} 
+                            {% if vps_data.get('server_ip') %}
+                                ({{ vps_data.server_ip }})
+                            {% endif %}
+                        </h4>
+                        <p class="text-muted mb-0">
+                            {% if vps_data.get('error') %}
+                                <span class="badge bg-danger">ERROR: {{ vps_data.error }}</span>
+                            {% else %}
+                                <span class="badge bg-success">ONLINE</span>
+                                Last updated: {{ vps_data.get('timestamp', 'Unknown')[:19] if vps_data.get('timestamp') else 'Unknown' }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="text-end">
+                        {% if not vps_data.get('error') and vps_data.get('summary') %}
+                        <div class="fw-bold text-primary">
+                            Revenue: ${{ "%.0f"|format((vps_data.summary.get('revenue_potential_cents', 0)) / 100) }}
+                        </div>
+                        <small class="text-muted">
+                            Utilization: {{ vps_data.summary.get('utilization_percent', 0) }}%
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            {% if not vps_data.get('error') and vps_data.get('tiers') %}
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="px-4 py-3">Tier</th>
+                                <th class="px-4 py-3">Capacity</th>
+                                <th class="px-4 py-3">Available</th>
+                                <th class="px-4 py-3">In Use</th>
+                                <th class="px-4 py-3">Utilization</th>
+                                <th class="px-4 py-3">Revenue (Full)</th>
+                                <th class="px-4 py-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tier_name, tier_data in vps_data.tiers.items() %}
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <div class="d-flex align-items-center">
+                                        {% if tier_name == 'test' %}
+                                            <i class="fas fa-flask text-success me-2"></i>
+                                        {% elif tier_name == 'monthly' %}
+                                            <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                        {% elif tier_name == 'quarterly' %}
+                                            <i class="fas fa-calendar-check text-info me-2"></i>
+                                        {% elif tier_name == 'biannual' %}
+                                            <i class="fas fa-chart-line text-warning me-2"></i>
+                                        {% elif tier_name == 'annual' %}
+                                            <i class="fas fa-trophy text-danger me-2"></i>
+                                        {% elif tier_name == 'lifetime' %}
+                                            <i class="fas fa-infinity text-dark me-2"></i>
+                                        {% endif %}
+                                        <strong>{{ tier_name.title() }}</strong>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="badge bg-secondary">{{ tier_data.get('capacity', 0) }}</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="badge bg-success">{{ tier_data.get('available', 0) }}</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="badge bg-warning">{{ (tier_data.get('capacity', 0) - tier_data.get('available', 0)) }}</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% set utilization = ((tier_data.get('capacity', 0) - tier_data.get('available', 0)) / tier_data.get('capacity', 1) * 100) if tier_data.get('capacity', 0) > 0 else 0 %}
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar 
+                                            {% if utilization < 50 %}bg-success
+                                            {% elif utilization < 80 %}bg-warning
+                                            {% else %}bg-danger{% endif %}" 
+                                             style="width: {{ utilization }}%">
+                                            {{ "%.0f"|format(utilization) }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% set tier_price = {
+                                        'test': 0,
+                                        'monthly': 499,
+                                        'quarterly': 1299,
+                                        'biannual': 2399,
+                                        'annual': 3999,
+                                        'lifetime': 9999
+                                    } %}
+                                    <strong>
+                                        ${{ "%.0f"|format((tier_price.get(tier_name, 0) * tier_data.get('capacity', 0)) / 100) }}
+                                    </strong>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if tier_data.get('available', 0) > (tier_data.get('capacity', 0) * 0.5) %}
+                                        <span class="status-indicator status-online">
+                                            <span class="status-dot online"></span>Healthy
+                                        </span>
+                                    {% elif tier_data.get('available', 0) > 0 %}
+                                        <span class="status-indicator status-busy">
+                                            <span class="status-dot busy"></span>Busy
+                                        </span>
+                                    {% else %}
+                                        <span class="status-indicator status-offline">
+                                            <span class="status-dot offline"></span>Full
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        <!-- API Health Check -->
+        <div class="card-modern p-4">
+            <h5 class="fw-bold mb-3">
+                <i class="fas fa-heartbeat text-danger me-2"></i>
+                System Health Check
+            </h5>
+            
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div id="apiHealth" class="status-indicator status-online">
+                            <span class="status-dot online"></span>Checking...
+                        </div>
+                        <small class="text-muted">API Status</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div id="dbHealth" class="status-indicator status-online">
+                            <span class="status-dot online"></span>
+                            {% if vps_report.summary.current_revenue_cents is defined %}Connected{% else %}Fallback{% endif %}
+                        </div>
+                        <small class="text-muted">Database</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div id="vpsHealth" class="status-indicator status-online">
+                            <span class="status-dot online"></span>
+                            {{ vps_report.vps_status.keys()|length }} Online
+                        </div>
+                        <small class="text-muted">VPS Servers</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="status-indicator status-online">
+                            <span class="status-dot online"></span>{{ vps_report.timestamp[:19] if vps_report.timestamp else 'Unknown' }}
+                        </div>
+                        <small class="text-muted">Last Update</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Raw Data (Expandable) -->
+        <div class="mt-4">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#rawData">
+                <i class="fas fa-code me-1"></i> Show Raw JSON Data
+            </button>
+            
+            <div class="collapse mt-3" id="rawData">
+                <div class="card bg-dark text-light">
+                    <div class="card-body">
+                        <pre class="mb-0" style="max-height: 400px; overflow-y: auto;"><code>{{ vps_report | tojson(indent=2) }}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Real-time health checks
+    async function checkAPIHealth() {
+        try {
+            const response = await fetch('/api/health');
+            const data = await response.json();
+            
+            const apiHealthDiv = document.getElementById('apiHealth');
+            if (data.status === 'healthy') {
+                apiHealthDiv.innerHTML = '<span class="status-dot online"></span>Healthy';
+                apiHealthDiv.className = 'status-indicator status-online';
+            } else {
+                apiHealthDiv.innerHTML = '<span class="status-dot offline"></span>Error';
+                apiHealthDiv.className = 'status-indicator status-offline';
+            }
+        } catch (error) {
+            const apiHealthDiv = document.getElementById('apiHealth');
+            apiHealthDiv.innerHTML = '<span class="status-dot offline"></span>Failed';
+            apiHealthDiv.className = 'status-indicator status-offline';
+        }
+    }
+    
+    // Check API health every 30 seconds
+    checkAPIHealth();
+    setInterval(checkAPIHealth, 30000);
+    
+    // Auto-refresh page every 5 minutes
+    setInterval(() => {
+        window.location.reload();
+    }, 300000);
+    
+    // Add visual feedback for table rows
+    document.addEventListener('DOMContentLoaded', function() {
+        const tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
+            });
+            
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+            });
+        });
+        
+        // Progress bar animations
+        const progressBars = document.querySelectorAll('.progress-bar');
+        progressBars.forEach(bar => {
+            const width = bar.style.width;
+            bar.style.width = '0%';
+            setTimeout(() => {
+                bar.style.transition = 'width 1s ease-in-out';
+                bar.style.width = width;
+            }, 100);
+        });
+    });
+    
+    // Add refresh animation
+    document.querySelector('[onclick="window.location.reload()"]').addEventListener('click', function() {
+        const icon = this.querySelector('.fa-sync');
+        icon.classList.add('fa-spin');
+    });
+</script>
+{% endblock %}

@@ -130,7 +130,8 @@ def order():
     
     return render_template('order.html', 
                          service_tiers=service_tiers, 
-                         available_ips=available_ips)
+                         available_ips=available_ips,
+                         stripe_publishable_key=STRIPE_PUBLISHABLE_KEY)
 
 @app.route('/refund')
 def refund():
@@ -624,7 +625,8 @@ def api_status():
             total_available = sum(ip['available_slots'] for ip in available_ips)
             tier_availability[tier_name] = {
                 'available': total_available,
-                'ips': len(available_ips)
+                'ips': len(available_ips),
+                'capacity': service_tiers[tier_name]['capacity']
             }
         
         return jsonify({

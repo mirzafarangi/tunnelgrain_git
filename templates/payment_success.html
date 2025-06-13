@@ -18,29 +18,44 @@
                     
                     <h1 class="display-5 fw-bold text-success mb-3">Payment Successful!</h1>
                     <p class="lead text-muted mb-4">
-                        Welcome to Tunnelgrain! Your VPN access is now active and ready to use.
+                        Welcome to Tunnelgrain! Your {{ tier_config.name }} access is now active and ready to use.
                     </p>
                     
                     <div class="card-modern p-3 mb-4" style="background: rgba(16, 185, 129, 0.1); border-color: var(--success-color);">
                         <div class="d-flex align-items-center justify-content-center">
                             <i class="fas fa-shield-alt text-success me-3" style="font-size: 1.5rem;"></i>
                             <div>
-                                <h5 class="fw-bold mb-1">VPN Account: {{ slot_id }}</h5>
-                                <div class="mb-1"><strong>Order Number:</strong> <code>{{ order_number }}</code></div>
-                                <small class="text-muted">Active for 30 days from today</small>
+                                <h5 class="fw-bold mb-1">{{ tier_config.name }} VPN</h5>
+                                <div class="mb-1"><strong>Order Number:</strong> <code>{{ order_data.order_number }}</code></div>
+                                <div class="mb-1"><strong>Server IP:</strong> <code>{{ order_data.ip_address }}</code></div>
+                                <small class="text-muted">
+                                    {% if tier_config.duration_days == 0 %}
+                                        Active for 15 minutes
+                                    {% elif tier_config.duration_days == 30 %}
+                                        Active for 30 days
+                                    {% elif tier_config.duration_days == 90 %}
+                                        Active for 90 days (3 months)
+                                    {% elif tier_config.duration_days == 180 %}
+                                        Active for 180 days (6 months)
+                                    {% elif tier_config.duration_days == 365 %}
+                                        Active for 365 days (1 year)
+                                    {% else %}
+                                        Lifetime access
+                                    {% endif %}
+                                </small>
                             </div>
                         </div>
                     </div>
                     
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <a href="/download-monthly-config" class="btn-primary-custom w-100 py-3">
+                            <a href="/download-purchase-config" class="btn-primary-custom w-100 py-3">
                                 <i class="fas fa-download me-2"></i>
                                 Download Config File
                             </a>
                         </div>
                         <div class="col-md-6">
-                            <a href="/download-monthly-qr" class="btn-secondary-custom w-100 py-3">
+                            <a href="/download-purchase-qr" class="btn-secondary-custom w-100 py-3">
                                 <i class="fas fa-qrcode me-2"></i>
                                 Download QR Code
                             </a>
@@ -50,7 +65,7 @@
                     <div class="text-center">
                         <small class="text-muted">
                             <i class="fas fa-info-circle me-1"></i>
-                            Save your order number: <strong>{{ order_number }}</strong> - use it to check your VPN status
+                            Save your order number: <strong>{{ order_data.order_number }}</strong> - use it to check your VPN status
                         </small>
                     </div>
                 </div>
@@ -64,7 +79,7 @@
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="section-title">Quick Setup Instructions</h2>
-            <p class="section-subtitle">Get connected in under 2 minutes</p>
+            <p class="section-subtitle">Get connected in under 2 minutes on any device</p>
         </div>
         
         <div class="row g-4">
@@ -75,7 +90,7 @@
                              style="width: 50px; height: 50px;">
                             <i class="fas fa-mobile-alt"></i>
                         </div>
-                        <h5 class="fw-bold mb-0">Mobile Setup</h5>
+                        <h5 class="fw-bold mb-0">Mobile Setup (iOS/Android)</h5>
                     </div>
                     
                     <div class="step-instructions">
@@ -91,7 +106,7 @@
                             <span class="badge bg-primary me-3 mt-1">2</span>
                             <div>
                                 <strong>Add Your VPN</strong><br>
-                                <small class="text-muted">Tap "+" → "Scan from QR code" or import config file</small>
+                                <small class="text-muted">Tap "+" → "Scan from QR code" (recommended) or import .conf file</small>
                             </div>
                         </div>
                         
@@ -107,7 +122,7 @@
                             <span class="badge bg-success me-3 mt-1">✓</span>
                             <div>
                                 <strong>You're Protected!</strong><br>
-                                <small class="text-muted">Enjoy secure, private browsing</small>
+                                <small class="text-muted">Enjoy secure, private browsing on {{ order_data.ip_address }}</small>
                             </div>
                         </div>
                     </div>
@@ -121,7 +136,7 @@
                              style="width: 50px; height: 50px;">
                             <i class="fas fa-desktop"></i>
                         </div>
-                        <h5 class="fw-bold mb-0">Desktop Setup</h5>
+                        <h5 class="fw-bold mb-0">Desktop Setup (Windows/Mac/Linux)</h5>
                     </div>
                     
                     <div class="step-instructions">
@@ -129,7 +144,7 @@
                             <span class="badge bg-primary me-3 mt-1">1</span>
                             <div>
                                 <strong>Download WireGuard</strong><br>
-                                <small class="text-muted">Get the client from <a href="https://www.wireguard.com/install/" target="_blank" class="text-primary">wireguard.com</a></small>
+                                <small class="text-muted">Get the official client from <a href="https://www.wireguard.com/install/" target="_blank" class="text-primary">wireguard.com</a></small>
                             </div>
                         </div>
                         
@@ -145,7 +160,7 @@
                             <span class="badge bg-primary me-3 mt-1">3</span>
                             <div>
                                 <strong>Activate</strong><br>
-                                <small class="text-muted">Click "Activate" to establish connection</small>
+                                <small class="text-muted">Click "Activate" to establish secure connection</small>
                             </div>
                         </div>
                         
@@ -153,7 +168,7 @@
                             <span class="badge bg-success me-3 mt-1">✓</span>
                             <div>
                                 <strong>Connected!</strong><br>
-                                <small class="text-muted">Your traffic is now encrypted and secure</small>
+                                <small class="text-muted">Your traffic is now encrypted and routed through {{ order_data.ip_address }}</small>
                             </div>
                         </div>
                     </div>
@@ -167,8 +182,8 @@
 <section class="section-padding bg-light">
     <div class="container">
         <div class="text-center mb-5">
-            <h2 class="section-title">Your VPN Benefits</h2>
-            <p class="section-subtitle">What you get with your Tunnelgrain subscription</p>
+            <h2 class="section-title">Your {{ tier_config.name }} Benefits</h2>
+            <p class="section-subtitle">Premium features included with your subscription</p>
         </div>
         
         <div class="row g-4">
@@ -208,7 +223,7 @@
     </div>
 </section>
 
-<!-- Important Information -->
+<!-- Plan-Specific Information -->
 <section class="section-padding">
     <div class="container">
         <div class="row justify-content-center">
@@ -216,27 +231,44 @@
                 <div class="card-modern p-4">
                     <h5 class="fw-bold mb-3">
                         <i class="fas fa-info-circle text-primary me-2"></i>
-                        Important Service Information
+                        {{ tier_config.name }} Service Details
                     </h5>
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <h6 class="fw-bold text-success">✓ What's Included</h6>
                             <ul class="list-unstyled small">
-                                <li class="mb-1">• 30 days of unlimited VPN access</li>
-                                <li class="mb-1">• Config files work on multiple devices</li>
-                                <li class="mb-1">• Technical support via email</li>
-                                <li class="mb-1">• Order tracking with: <code>{{ order_number }}</code></li>
+                                <li class="mb-1">
+                                    • 
+                                    {% if tier_config.duration_days == 0 %}
+                                        15 minutes of unlimited VPN access
+                                    {% elif tier_config.duration_days == 30 %}
+                                        30 days of unlimited VPN access
+                                    {% elif tier_config.duration_days == 90 %}
+                                        90 days (3 months) of unlimited VPN access
+                                    {% elif tier_config.duration_days == 180 %}
+                                        180 days (6 months) of unlimited VPN access
+                                    {% elif tier_config.duration_days == 365 %}
+                                        365 days (1 year) of unlimited VPN access
+                                    {% else %}
+                                        Lifetime unlimited VPN access
+                                    {% endif %}
+                                </li>
+                                <li class="mb-1">• Config files work on unlimited devices</li>
+                                <li class="mb-1">• Professional technical support via email</li>
+                                <li class="mb-1">• Server IP: {{ order_data.ip_address }}</li>
+                                <li class="mb-1">• Order tracking: <code>{{ order_data.order_number }}</code></li>
                             </ul>
                         </div>
                         
                         <div class="col-md-6 mb-3">
                             <h6 class="fw-bold text-warning">⚠ Service Limitations</h6>
                             <ul class="list-unstyled small">
-                                <li class="mb-1">• Limited to 10 concurrent users</li>
-                                <li class="mb-1">• No refunds (except technical failures)</li>
+                                <li class="mb-1">• Limited server capacity for optimal performance</li>
+                                <li class="mb-1">• No refunds (except proven technical failures)</li>
                                 <li class="mb-1">• No automatic renewal</li>
-                                <li class="mb-1">• Support via email only</li>
+                                <li class="mb-1">• Support response: 24-48 hours</li>
+                                <li class="mb-1">• Email-only technical support</li>
                             </ul>
                         </div>
                     </div>
@@ -244,8 +276,17 @@
                     <div class="bg-light rounded p-3 mt-3">
                         <small class="text-muted">
                             <i class="fas fa-clock me-2"></i>
-                            <strong>Access Duration:</strong> Your VPN access expires exactly 30 days from today. 
-                            Use order number <strong>{{ order_number }}</strong> to check status anytime.
+                            <strong>Access Duration:</strong> 
+                            {% if tier_config.duration_days == 0 %}
+                                Your test VPN expires in 15 minutes from activation.
+                            {% elif tier_config.duration_days < 365 %}
+                                Your VPN access expires exactly {{ tier_config.duration_days }} days from today.
+                            {% elif tier_config.duration_days == 365 %}
+                                Your VPN access expires exactly 1 year from today.
+                            {% else %}
+                                You have lifetime access - no expiration date.
+                            {% endif %}
+                            Use order number <strong>{{ order_data.order_number }}</strong> to check status anytime.
                         </small>
                     </div>
                 </div>
@@ -254,8 +295,50 @@
     </div>
 </section>
 
-<!-- Support Section -->
+<!-- Tier-Specific Tips -->
+{% if tier_config.duration_days >= 90 %}
 <section class="section-padding bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card-modern p-4 text-center">
+                    <i class="fas fa-lightbulb text-warning mb-3" style="font-size: 2.5rem;"></i>
+                    <h5 class="fw-bold mb-3">Pro Tips for Long-Term Users</h5>
+                    <div class="row g-3 text-start">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled small">
+                                <li class="mb-2">
+                                    <i class="fas fa-bookmark text-primary me-2"></i>
+                                    Bookmark this page for easy config re-download
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-mobile-alt text-primary me-2"></i>
+                                    Set up on multiple devices for seamless switching
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled small">
+                                <li class="mb-2">
+                                    <i class="fas fa-calendar-check text-primary me-2"></i>
+                                    Add expiration date to your calendar
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-headset text-primary me-2"></i>
+                                    Contact support for any technical assistance
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Support Section -->
+<section class="section-padding{% if tier_config.duration_days < 90 %} bg-light{% endif %}">
     <div class="container">
         <div class="row justify-content-center text-center">
             <div class="col-lg-6">
@@ -277,11 +360,61 @@
                             Check Order Status
                         </a>
                     </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            Response time: 24-48 hours • Include your order number for faster service
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<!-- Next Purchase Suggestion (for non-lifetime users) -->
+{% if tier_config.duration_days < 36500 %}
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-6">
+                <div class="card-modern p-4">
+                    <i class="fas fa-gift text-success mb-3" style="font-size: 2.5rem;"></i>
+                    <h5 class="fw-bold mb-3">Planning Ahead?</h5>
+                    <p class="text-muted mb-4">
+                        When your {{ tier_config.name }} expires, consider our longer-term plans for better value 
+                        and uninterrupted protection.
+                    </p>
+                    
+                    <div class="row g-3 mb-4">
+                        {% if tier_config.duration_days < 365 %}
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="fw-bold">Annual Plan</h6>
+                                <div class="text-primary fw-bold">$39.99</div>
+                                <small class="text-muted">Best value • 365 days</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="fw-bold">Lifetime Plan</h6>
+                                <div class="text-warning fw-bold">$99.99</div>
+                                <small class="text-muted">Never expires • Premium</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <a href="{{ url_for('pricing') }}" class="btn-secondary-custom">
+                        <i class="fas fa-eye me-2"></i>
+                        View All Plans
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -310,26 +443,50 @@
                 setTimeout(() => {
                     this.innerHTML = '<i class="fas fa-check me-2"></i>Downloaded!';
                     this.classList.remove('btn-primary-custom');
-                    this.classList.add('btn-secondary-custom');
+                    this.classList.add('btn-success');
+                    this.style.background = 'var(--success-color)';
+                    this.style.borderColor = 'var(--success-color)';
                     
                     setTimeout(() => {
                         this.innerHTML = originalText;
                         this.style.pointerEvents = 'auto';
-                        this.classList.remove('btn-secondary-custom');
+                        this.classList.remove('btn-success');
                         this.classList.add('btn-primary-custom');
+                        this.style.background = '';
+                        this.style.borderColor = '';
                     }, 2000);
                 }, 1000);
             });
         });
         
-        // Show helpful tips based on user agent
+        // Show helpful tips based on user agent and plan duration
         const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const planDuration = {{ tier_config.duration_days }};
         
-        if (isMobile) {
-            setTimeout(() => {
+        setTimeout(() => {
+            if (isMobile) {
                 showNotification('info', 'Mobile Setup Tip', 'For mobile devices, we recommend using the QR code for faster setup!');
-            }, 2000);
-        }
+            } else if (planDuration >= 365) {
+                showNotification('success', 'Long-term Plan', 'Consider setting up on multiple devices to get the most value from your plan!');
+            }
+        }, 2000);
+        
+        // Auto-copy order number when clicked
+        const orderNumberElements = document.querySelectorAll('code');
+        orderNumberElements.forEach(element => {
+            if (element.textContent.match(/^(42|72)[A-Z0-9]{6}$/)) {
+                element.style.cursor = 'pointer';
+                element.title = 'Click to copy order number';
+                
+                element.addEventListener('click', function() {
+                    navigator.clipboard.writeText(this.textContent).then(() => {
+                        showNotification('success', 'Copied!', 'Order number copied to clipboard');
+                    }).catch(() => {
+                        showNotification('info', 'Order Number', `Your order number is: ${this.textContent}`);
+                    });
+                });
+            }
+        });
     });
     
     function showNotification(type, title, message) {

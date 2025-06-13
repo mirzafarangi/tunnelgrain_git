@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+
+{% block title %}Order VPN Plans - Tunnelgrain{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content text-center">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold mb-4">
+                        Choose Your VPN Plan
+                        <span class="d-block text-warning">Multiple Durations & Server IPs Available</span>
+                    </h1>
+                    <p class="lead mb-4 opacity-90">
+                        Select the perfect plan duration and server IP address for your privacy needs. 
+                        From quick tests to lifetime protection.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Order Form Section -->
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card-modern p-5">
+                    <div class="text-center mb-5">
+                        <h3 class="fw-bold mb-3">Select Your VPN Configuration</h3>
+                        <p class="text-muted">Choose plan duration and server IP address</p>
+                    </div>
+                    
+                    <form id="orderForm">
+                        <!-- Step 1: Plan Selection -->
+                        <div class="mb-5">
+                            <h5 class="fw-bold mb-4">
+                                <span class="badge bg-primary me-2">1</span>
+                                Choose Your Plan Duration
+                            </h5>
+                            
+                            <div class="row g-3">
+                                {% for tier_key, tier_data in service_tiers.items() %}
+                                {% if tier_key != 'test' %}
+                                <div class="col-md-6">
+                                    <input type="radio" class="btn-check" name="tier" id="tier_{{ tier_key }}" value="{{ tier_key }}" required>
+                                    <label class="btn btn-outline-primary w-100 p-3" for="tier_{{ tier_key }}">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="text-start">
+                                                <div class="fw-bold">{{ tier_data.name }}</div>
+                                                <small class="text-muted">{{ tier_data.description }}</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="fw-bold text-primary">
+                                                    ${{ "%.2f"|format(tier_data.price_cents / 100) }}
+                                                </div>
+                                                <small class="text-muted">
+                                                    {% if tier_data.duration_days == 30 %}
+                                                        /month
+                                                    {% elif tier_data.duration_days == 90 %}
+                                                        /3 months
+                                                    {% elif tier_data.duration_days == 180 %}
+                                                        /6 months
+                                                    {% elif tier_data.duration_days == 365 %}
+                                                        /year
+                                                    {% else %}
+                                                        /lifetime
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Step 2: Server IP Selection -->
+                        <div class="mb-5" id="serverSelection" style="display: none;">
+                            <h5 class="fw-bold mb-4">
+                                <span class="badge bg-success me-2">2</span>
+                                Choose Server IP Address
+                            </h5>
+                            
+                            <div id="availableServers">
+                                <!-- Will be populated dynamically -->
+                            </div>
+                        </div>
+                        
+                        <!-- Step 3: Order Summary -->
+                        <div class="mb-5" id="orderSummary" style="display: none;">
+                            <h5 class="fw-bold mb-4">
+                                <span class="badge bg-warning me-2">3</span>
+                                Order Summary
+                            </h5>
+                            
+                            <div class="card bg-light p-4">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold mb-2">Selected Plan:</h6>
+                                        <div id="selectedPlan" class="text-muted mb-3">-</div>
+                                        
+                                        <h6 class="fw-bold mb-2">Server IP:</h6>
+                                        <div id="selectedIP" class="text-muted">-</div>
+                                    </div>
+                                    <div class="col-md-6 text-md-end">
+                                        <h6 class="fw-bold mb-2">Total:</h6>
+                                        <div class="display-6 fw-bold text-primary" id="totalPrice">$0.00</div>
+                                        <small class="text-muted" id="priceNote">One-time payment</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 4: Checkout -->
+                        <div class="text-center" id="checkoutSection" style="display: none;">
+                            <button type="submit" class="btn-primary-custom btn-lg px-5">
+                                <i class="fas fa-credit-card me-2"></i>
+                                Proceed to Secure Checkout
+                            </button>
+                            
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-lock me-1"></i>
+                                    Secure payment powered by Stripe • No auto-renewal
+                                </small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">What's Included</h2>
+            <p class="section-subtitle">Every plan includes these premium features</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <i class="fas fa-shield-alt text-primary mb-3" style="font-size: 2rem;"></i>
+                    <h6 class="fw-bold mb-2">Military-Grade Security</h6>
+                    <p class="text-muted small mb-0">WireGuard protocol with advanced encryption</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <i class="fas fa-devices text-success mb-3" style="font-size: 2rem;"></i>
+                    <h6 class="fw-bold mb-2">All Devices</h6>
+                    <p class="text-muted small mb-0">Windows, Mac, Linux, iOS, Android support</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <i class="fas fa-eye-slash text-warning mb-3" style="font-size: 2rem;"></i>
+                    <h6 class="fw-bold mb-2">Zero Logs</h6>
+                    <p class="text-muted small mb-0">We don't track your browsing activity</p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <i class="fas fa-headset text-info mb-3" style="font-size: 2rem;"></i>
+                    <h6 class="fw-bold mb-2">Expert Support</h6>
+                    <p class="text-muted small mb-0">Technical assistance via email</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Test CTA -->
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 text-center">
+                <div class="card-modern p-5">
+                    <i class="fas fa-flask text-success mb-4" style="font-size: 3rem;"></i>
+                    <h4 class="fw-bold mb-3">Not Sure Which Plan?</h4>
+                    <p class="text-muted mb-4">
+                        Try our service first with a 15-minute free test. 
+                        Experience the full performance before making a commitment.
+                    </p>
+                    
+                    <a href="{{ url_for('test') }}" class="btn-secondary-custom btn-lg">
+                        <i class="fas fa-play me-2"></i>
+                        Start Free 15-Minute Test
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedTier = '';
+    let selectedIP = '';
+    let tierData = {};
+    
+    // Store service tiers data
+    {% for tier_key, tier_data in service_tiers.items() %}
+    tierData['{{ tier_key }}'] = {
+        name: '{{ tier_data.name }}',
+        price_cents: {{ tier_data.price_cents }},
+        description: '{{ tier_data.description }}',
+        duration_days: {{ tier_data.duration_days }}
+    };
+    {% endfor %}
+    
+    // Available IPs data
+    const availableIPs = {{ available_ips | tojsonfilter | safe }};
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle tier selection
+        document.querySelectorAll('input[name="tier"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                selectedTier = this.value;
+                showServerSelection();
+                updateOrderSummary();
+            });
+        });
+        
+        // Handle form submission
+        document.getElementById('orderForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            processCheckout();
+        });
+    });
+    
+    function showServerSelection() {
+        const serverSection = document.getElementById('serverSelection');
+        const availableServersDiv = document.getElementById('availableServers');
+        
+        if (!selectedTier || selectedTier === 'test') {
+            serverSection.style.display = 'none';
+            return;
+        }
+        
+        // Get available IPs for selected tier
+        const tierIPs = availableIPs[selectedTier] || [];
+        
+        if (tierIPs.length === 0) {
+            availableServersDiv.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No servers available for this plan. Please try again later or contact support.
+                </div>
+            `;
+        } else {
+            let serversHTML = '<div class="row g-3">';
+            
+            tierIPs.forEach((ipData, index) => {
+                serversHTML += `
+                    <div class="col-md-6">
+                        <input type="radio" class="btn-check" name="server_ip" id="server_${index}" value="${ipData.ip_address}" required>
+                        <label class="btn btn-outline-success w-100 p-3" for="server_${index}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="text-start">
+                                    <div class="fw-bold">${ipData.ip_address}</div>
+                                    <small class="text-muted">Server: ${ipData.vps_name}</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="badge bg-success">${ipData.available_slots} slots</div>
+                                    <div><small class="text-muted">available</small></div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                `;
+            });
+            
+            serversHTML += '</div>';
+            availableServersDiv.innerHTML = serversHTML;
+            
+            // Add event listeners to server selection
+            document.querySelectorAll('input[name="server_ip"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    selectedIP = this.value;
+                    updateOrderSummary();
+                });
+            });
+        }
+        
+        serverSection.style.display = 'block';
+    }
+    
+    function updateOrderSummary() {
+        const summarySection = document.getElementById('orderSummary');
+        const checkoutSection = document.getElementById('checkoutSection');
+        
+        if (!selectedTier || !selectedIP) {
+            summarySection.style.display = 'none';
+            checkoutSection.style.display = 'none';
+            return;
+        }
+        
+        const tier = tierData[selectedTier];
+        const price = (tier.price_cents / 100).toFixed(2);
+        
+        // Update summary display
+        document.getElementById('selectedPlan').textContent = tier.name + ' - ' + tier.description;
+        document.getElementById('selectedIP').textContent = selectedIP;
+        document.getElementById('totalPrice').textContent = '$' + price;
+        
+        // Update price note based on duration
+        let priceNote = 'One-time payment';
+        if (tier.duration_days === 30) priceNote += ' • Valid for 30 days';
+        else if (tier.duration_days === 90) priceNote += ' • Valid for 90 days';
+        else if (tier.duration_days === 180) priceNote += ' • Valid for 180 days';
+        else if (tier.duration_days === 365) priceNote += ' • Valid for 365 days';
+        else if (tier.duration_days > 365) priceNote += ' • Lifetime access';
+        
+        document.getElementById('priceNote').textContent = priceNote;
+        
+        summarySection.style.display = 'block';
+        checkoutSection.style.display = 'block';
+    }
+    
+    async function processCheckout() {
+        if (!selectedTier || !selectedIP) {
+            showNotification('error', 'Incomplete Selection', 'Please select both a plan and server IP.');
+            return;
+        }
+        
+        const submitBtn = document.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating secure checkout...';
+        
+        try {
+            const response = await fetch('/create-checkout-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    tier: selectedTier,
+                    ip_address: selectedIP
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                showNotification('error', 'Checkout Error', data.error);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                return;
+            }
+            
+            // Redirect to Stripe checkout
+            window.location.href = data.checkout_url;
+            
+        } catch (error) {
+            console.error('Checkout error:', error);
+            showNotification('error', 'Connection Error', 'Please check your internet connection and try again.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+    
+    function showNotification(type, title, message) {
+        const alertTypes = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        };
+        
+        const icons = {
+            'success': 'fas fa-check-circle',
+            'error': 'fas fa-times-circle',
+            'warning': 'fas fa-exclamation-triangle',
+            'info': 'fas fa-info-circle'
+        };
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert ${alertTypes[type]} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 100px; right: 20px; z-index: 9999; max-width: 400px; box-shadow: 0 8px 25px rgba(0,0,0,0.15);';
+        alertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="${icons[type]} me-2"></i>
+                <div>
+                    <strong>${title}</strong><br>
+                    <small>${message}</small>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.classList.remove('show');
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.parentNode.removeChild(alertDiv);
+                    }
+                }, 150);
+            }
+        }, 5000);
+    }
+</script>
+{% endblock %}

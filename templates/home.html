@@ -11,11 +11,11 @@
                 <div class="col-lg-8 mx-auto">
                     <h1 class="display-4 fw-bold mb-4">
                         Professional VPN Access
-                        <span class="d-block text-warning">Multiple Plans Available</span>
+                        <span class="d-block text-warning">6 Plans • Multiple Server IPs</span>
                     </h1>
                     <p class="lead mb-5 opacity-90">
                         Enterprise-grade WireGuard VPN service with flexible duration options. 
-                        Choose from multiple server IPs and subscription lengths to fit your needs.
+                        From 15-minute tests to lifetime protection - choose what fits your needs.
                     </p>
                     
                     <div class="d-flex gap-3 justify-content-center flex-wrap mb-4">
@@ -33,24 +33,21 @@
                         <div class="col-md-4 mb-2">
                             <div id="monthly-status">
                                 <div class="status-indicator status-online">
-                                    <span class="status-dot online"></span>
-                                    Loading availability...
+                                    <span class="status-dot online"></span>Loading availability...
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4 mb-2">
                             <div id="test-status">
                                 <div class="status-indicator status-online">
-                                    <span class="status-dot online"></span>
-                                    Loading test slots...
+                                    <span class="status-dot online"></span>Loading test slots...
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4 mb-2">
                             <div id="total-ips">
                                 <div class="status-indicator status-online">
-                                    <span class="status-dot online"></span>
-                                    Multiple server IPs
+                                    <span class="status-dot online"></span>Multiple server IPs
                                 </div>
                             </div>
                         </div>
@@ -61,12 +58,12 @@
     </div>
 </section>
 
-<!-- Pricing Preview Section -->
+<!-- Quick Pricing Overview -->
 <section class="section-padding bg-light">
     <div class="container">
         <div class="text-center mb-5">
-            <h2 class="section-title">Choose Your Plan</h2>
-            <p class="section-subtitle">Flexible pricing options for every privacy need</p>
+            <h2 class="section-title">Choose Your Plan Duration</h2>
+            <p class="section-subtitle">From quick tests to lifetime protection - transparent pricing for every need</p>
         </div>
         
         <div class="row g-4">
@@ -118,7 +115,7 @@
                     </ul>
                     
                     <a href="{{ url_for('order') }}" class="btn-primary-custom w-100">
-                        <i class="fas fa-shopping-cart me-2"></i>Choose Plan
+                        <i class="fas fa-shopping-cart me-2"></i>Choose Monthly
                     </a>
                 </div>
             </div>
@@ -150,11 +147,42 @@
             </div>
         </div>
         
+        <!-- All Plans Grid -->
         <div class="text-center mt-5">
-            <a href="{{ url_for('pricing') }}" class="btn-outline-custom">
-                <i class="fas fa-list me-2"></i>
-                View All Plans & Pricing
-            </a>
+            <h5 class="fw-bold mb-4">All Available Plans</h5>
+            <div class="row g-3">
+                {% for tier_key, tier_data in service_tiers.items() %}
+                {% if tier_key != 'test' %}
+                <div class="col-lg-3 col-md-6">
+                    <div class="card bg-white border p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-start">
+                                <div class="fw-bold">{{ tier_data.name }}</div>
+                                <small class="text-muted">
+                                    {% if tier_data.duration_days == 30 %}30 days
+                                    {% elif tier_data.duration_days == 90 %}3 months
+                                    {% elif tier_data.duration_days == 180 %}6 months
+                                    {% elif tier_data.duration_days == 365 %}1 year
+                                    {% else %}Lifetime{% endif %}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold text-primary">${{ "%.2f"|format(tier_data.price_cents / 100) }}</div>
+                                <div><span class="badge bg-light text-dark">{{ tier_data.capacity }} slots</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            
+            <div class="mt-4">
+                <a href="{{ url_for('pricing') }}" class="btn-outline-custom">
+                    <i class="fas fa-list me-2"></i>
+                    View Detailed Pricing & Comparison
+                </a>
+            </div>
         </div>
     </div>
 </section>
@@ -263,6 +291,38 @@
                     <div class="mb-3">
                         <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
                              style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                            1
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-3">Try First</h5>
+                    <p class="text-muted mb-0">
+                        Test our service with a 15-minute free trial. Verify compatibility 
+                        and performance before making any commitment.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
+                            2
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-3">Choose Your Plan</h5>
+                    <p class="text-muted mb-0">
+                        Select from 5 duration options and multiple server IPs. 
+                        Pick the combination that best fits your needs.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center h-100">
+                    <div class="mb-3">
+                        <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
                             3
                         </div>
                     </div>
@@ -310,11 +370,7 @@
                     <ul class="list-unstyled">
                         <li class="mb-2">
                             <i class="fas fa-server text-primary me-2"></i>
-                            Multiple high-performance VPS servers
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-globe text-primary me-2"></i>
-                            Choice of server IP addresses
+                            High-performance VPS servers with multiple IPs
                         </li>
                         <li class="mb-2">
                             <i class="fas fa-shield-alt text-primary me-2"></i>
@@ -322,15 +378,19 @@
                         </li>
                         <li class="mb-2">
                             <i class="fas fa-clock text-primary me-2"></i>
-                            Flexible subscription durations
+                            6 flexible subscription durations (test to lifetime)
                         </li>
                         <li class="mb-2">
                             <i class="fas fa-headset text-primary me-2"></i>
-                            Professional technical support
+                            Professional technical support via email
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-eye-slash text-primary me-2"></i>
+                            Strict no-logging policy for your privacy
                         </li>
                         <li class="mb-0">
-                            <i class="fas fa-eye-slash text-primary me-2"></i>
-                            Strict no-logging policy
+                            <i class="fas fa-mobile-alt text-primary me-2"></i>
+                            Universal device compatibility
                         </li>
                     </ul>
                 </div>
@@ -344,27 +404,27 @@
                     <ul class="list-unstyled">
                         <li class="mb-2">
                             <i class="fas fa-users text-warning me-2"></i>
-                            Limited capacity per server for optimal performance
+                            Limited capacity per tier for optimal performance
                         </li>
                         <li class="mb-2">
                             <i class="fas fa-ban text-warning me-2"></i>
-                            No refunds policy (free test available)
+                            No refunds policy (free test available first)
                         </li>
                         <li class="mb-2">
                             <i class="fas fa-envelope text-warning me-2"></i>
-                            Email-only technical support
+                            Email-only technical support (24-48hr response)
                         </li>
                         <li class="mb-2">
                             <i class="fas fa-map-marker-alt text-warning me-2"></i>
-                            Limited server locations
+                            Currently single server location
                         </li>
                         <li class="mb-2">
                             <i class="fas fa-handshake text-warning me-2"></i>
-                            Manual service management
+                            Manual service management (no auto-renewal)
                         </li>
                         <li class="mb-0">
-                            <i class="fas fa-clock text-warning me-2"></i>
-                            24-48 hour support response time
+                            <i class="fas fa-chart-line text-warning me-2"></i>
+                            Performance varies by location and ISP
                         </li>
                     </ul>
                 </div>
@@ -373,8 +433,45 @@
     </div>
 </section>
 
-<!-- CTA Section -->
+<!-- Live Capacity Display -->
 <section class="section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Live Capacity Status</h2>
+            <p class="section-subtitle">Real-time availability across all our VPN tiers</p>
+        </div>
+        
+        <div class="row g-3" id="liveCapacity">
+            <!-- Will be populated by JavaScript -->
+            {% for tier_key, tier_data in service_tiers.items() %}
+            {% if tier_key != 'test' %}
+            <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="card-modern p-3 text-center">
+                    <h6 class="fw-bold mb-2">{{ tier_data.name }}</h6>
+                    <div class="mb-2">
+                        <span class="badge bg-secondary" id="capacity-{{ tier_key }}">{{ tier_data.capacity }}</span>
+                        <small class="text-muted d-block">total slots</small>
+                    </div>
+                    <div id="status-{{ tier_key }}" class="status-indicator status-online">
+                        <span class="status-dot online"></span>Available
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        
+        <div class="text-center mt-4">
+            <small class="text-muted">
+                <i class="fas fa-sync me-1"></i>
+                Updated every 30 seconds • Capacity is limited to ensure quality
+            </small>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="section-padding">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8 text-center">
@@ -425,10 +522,10 @@
 <script>
     // Update slot status indicators
     function updateSlotStatus() {
-        fetch('/api/slot-status')
+        fetch('/api/status')
             .then(response => response.json())
             .then(data => {
-                // Update monthly status
+                // Update main status indicators
                 const monthlyElement = document.getElementById('monthly-status');
                 if (monthlyElement && data.tiers && data.tiers.monthly) {
                     const available = data.tiers.monthly.available;
@@ -450,32 +547,66 @@
                     monthlyElement.innerHTML = `
                         <div class="status-indicator ${statusClass}">
                             <span class="status-dot ${dotClass}"></span>
-                            ${available} monthly slots available
+                            ${available}/${capacity} monthly slots
                         </div>
                     `;
                 }
                 
                 // Update test status
                 const testElement = document.getElementById('test-status');
-                if (testElement) {
+                if (testElement && data.tiers && data.tiers.test) {
                     testElement.innerHTML = `
                         <div class="status-indicator status-online">
                             <span class="status-dot online"></span>
-                            Free tests available
+                            ${data.tiers.test.available || 'Many'} test slots available
                         </div>
                     `;
                 }
                 
                 // Update total IPs info
                 const totalIpsElement = document.getElementById('total-ips');
-                if (totalIpsElement && data.summary) {
-                    const totalIps = data.summary.total_ips || 'Multiple';
+                if (totalIpsElement) {
+                    const vpsCount = data.vps_count || 1;
                     totalIpsElement.innerHTML = `
                         <div class="status-indicator status-online">
                             <span class="status-dot online"></span>
-                            ${totalIps} server IPs available
+                            ${vpsCount} VPS with multiple IPs
                         </div>
                     `;
+                }
+                
+                // Update live capacity display
+                if (data.tiers) {
+                    for (const [tierName, tierData] of Object.entries(data.tiers)) {
+                        const statusElement = document.getElementById(`status-${tierName}`);
+                        if (statusElement && tierName !== 'test') {
+                            const available = tierData.available || 0;
+                            const capacity = tierData.capacity || 0;
+                            const percentage = capacity > 0 ? (available / capacity) * 100 : 0;
+                            
+                            let statusClass, dotClass, statusText;
+                            if (percentage > 50) {
+                                statusClass = 'status-online';
+                                dotClass = 'online';
+                                statusText = `${available} Available`;
+                            } else if (percentage > 20) {
+                                statusClass = 'status-busy';
+                                dotClass = 'busy';
+                                statusText = `${available} Left`;
+                            } else if (available > 0) {
+                                statusClass = 'status-busy';
+                                dotClass = 'busy';
+                                statusText = `${available} Left`;
+                            } else {
+                                statusClass = 'status-offline';
+                                dotClass = 'offline';
+                                statusText = 'Full';
+                            }
+                            
+                            statusElement.innerHTML = `<span class="status-dot ${dotClass}"></span>${statusText}`;
+                            statusElement.className = `status-indicator ${statusClass}`;
+                        }
+                    }
                 }
             })
             .catch(err => {
@@ -487,8 +618,7 @@
                     if (element) {
                         element.innerHTML = `
                             <div class="status-indicator status-busy">
-                                <span class="status-dot busy"></span>
-                                Loading...
+                                <span class="status-dot busy"></span>Loading...
                             </div>
                         `;
                     }
@@ -555,129 +685,28 @@
         const priceElements = document.querySelectorAll('.display-6');
         priceElements.forEach((element, index) => {
             const finalPrice = element.textContent;
-            element.textContent = '$0.00';
-            
-            setTimeout(() => {
-                let current = 0;
-                const target = parseFloat(finalPrice.replace('text-center h-100">
-                    <div class="mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
-                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
-                            1
-                        </div>
-                    </div>
-                    <h5 class="fw-bold mb-3">Try First</h5>
-                    <p class="text-muted mb-0">
-                        Test our service with a 15-minute free trial. Verify compatibility 
-                        and performance before making any commitment.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="card-modern p-4 text-center h-100">
-                    <div class="mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
-                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
-                            2
-                        </div>
-                    </div>
-                    <h5 class="fw-bold mb-3">Choose Your Plan</h5>
-                    <p class="text-muted mb-0">
-                        Select from multiple duration options and server IPs. 
-                        Pick the combination that best fits your needs.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="card-modern p-4 , '').replace('FREE', '0'));
-                const increment = target / 30;
+            if (finalPrice !== 'FREE') {
+                element.textContent = '$0.00';
                 
-                const animate = () => {
-                    current += increment;
-                    if (current >= target) {
-                        element.textContent = finalPrice;
-                    } else {
-                        if (finalPrice === 'FREE') {
-                            element.textContent = 'FREE';
+                setTimeout(() => {
+                    let current = 0;
+                    const target = parseFloat(finalPrice.replace('$', ''));
+                    const increment = target / 30;
+                    
+                    const animate = () => {
+                        current += increment;
+                        if (current >= target) {
+                            element.textContent = finalPrice;
                         } else {
-                            element.textContent = 'text-center h-100">
-                    <div class="mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
-                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
-                            1
-                        </div>
-                    </div>
-                    <h5 class="fw-bold mb-3">Try First</h5>
-                    <p class="text-muted mb-0">
-                        Test our service with a 15-minute free trial. Verify compatibility 
-                        and performance before making any commitment.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="card-modern p-4 text-center h-100">
-                    <div class="mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
-                             style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
-                            2
-                        </div>
-                    </div>
-                    <h5 class="fw-bold mb-3">Choose Your Plan</h5>
-                    <p class="text-muted mb-0">
-                        Select from multiple duration options and server IPs. 
-                        Pick the combination that best fits your needs.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="card-modern p-4  + current.toFixed(2);
+                            element.textContent = '$' + current.toFixed(2);
+                            requestAnimationFrame(animate);
                         }
-                        requestAnimationFrame(animate);
-                    }
-                };
-                
-                if (target > 0) {
+                    };
+                    
                     animate();
-                } else {
-                    element.textContent = 'FREE';
-                }
-            }, index * 200);
+                }, index * 200);
+            }
         });
     });
 </script>
 {% endblock %}
-<div class="col-lg-3 col-md-6">
-    <div class="card-modern p-4 text-center h-100">
-        <div class="mb-3">
-            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
-                 style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
-                1
-            </div>
-        </div>
-        <h5 class="fw-bold mb-3">Try First</h5>
-        <p class="text-muted mb-0">
-            Test our service with a 15-minute free trial. Verify compatibility 
-            and performance before making any commitment.
-        </p>
-    </div>
-</div>
-
-<div class="col-lg-3 col-md-6">
-    <div class="card-modern p-4 text-center h-100">
-        <div class="mb-3">
-            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
-                 style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">
-                2
-            </div>
-        </div>
-        <h5 class="fw-bold mb-3">Choose Your Plan</h5>
-        <p class="text-muted mb-0">
-            Select from multiple duration options and server IPs. 
-            Pick the combination that best fits your needs.
-        </p>
-    </div>
-</div>

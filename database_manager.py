@@ -29,53 +29,59 @@ class EnhancedVPNManager:
         self.database_url = os.environ.get('DATABASE_URL')
         self.use_database = bool(self.database_url)
         
-        # Service tier configuration
+        # Service tier configuration - MATCHES YOUR VPS SETUP EXACTLY
         self.service_tiers = {
             'test': {
                 'name': 'Free Test',
                 'duration_days': 0,  # Special: 15 minutes
                 'price_cents': 0,
                 'description': '15-minute free trial',
-                'order_prefix': '72'
+                'order_prefix': '72',
+                'capacity': 50
             },
             'monthly': {
                 'name': 'Monthly VPN',
                 'duration_days': 30,
-                'price_cents': 499,
+                'price_cents': 499,  # $4.99
                 'description': '30 days unlimited access',
-                'order_prefix': '42'
+                'order_prefix': '42',
+                'capacity': 30
             },
             'quarterly': {
                 'name': '3-Month VPN',
                 'duration_days': 90,
-                'price_cents': 1299,
+                'price_cents': 1299,  # $12.99
                 'description': '90 days unlimited access',
-                'order_prefix': '42'
+                'order_prefix': '42',
+                'capacity': 20
             },
             'biannual': {
                 'name': '6-Month VPN',
                 'duration_days': 180,
-                'price_cents': 2399,
+                'price_cents': 2399,  # $23.99
                 'description': '180 days unlimited access',
-                'order_prefix': '42'
+                'order_prefix': '42',
+                'capacity': 15
             },
             'annual': {
                 'name': '12-Month VPN',
                 'duration_days': 365,
-                'price_cents': 3999,
+                'price_cents': 3999,  # $39.99
                 'description': '365 days unlimited access',
-                'order_prefix': '42'
+                'order_prefix': '42',
+                'capacity': 10
             },
             'lifetime': {
                 'name': 'Lifetime VPN',
                 'duration_days': 36500,  # 100 years
-                'price_cents': 9999,
+                'price_cents': 9999,  # $99.99
                 'description': 'Lifetime unlimited access',
-                'order_prefix': '42'
+                'order_prefix': '42',
+                'capacity': 5
             }
         }
         
-        # VPS configuration
+        # VPS configuration - matches your current setup
         self.vps_endpoints = self.load_vps_config()
         
         # Initialize database or fallback
@@ -260,22 +266,11 @@ class EnhancedVPNManager:
                 logger.warning(f"[VPS] VPS config not found: {vps_name}")
                 return
             
-            # Map tier to VPS tier names
-            tier_mapping = {
-                'test': 'test',
-                'monthly': 'monthly',
-                'quarterly': 'quarterly',
-                'biannual': 'biannual',
-                'annual': 'annual',
-                'lifetime': 'lifetime'
-            }
-            
-            vps_tier = tier_mapping.get(tier, tier)
             endpoint = f"{vps_config['endpoint']}/api/start-timer"
             
             payload = {
                 "order_number": order_number,
-                "tier": vps_tier,
+                "tier": tier,
                 "ip_address": ip_address,
                 "duration_seconds": duration_seconds
             }
@@ -489,7 +484,7 @@ class EnhancedVPNManager:
             tiers_data = vps_data.get("tiers", {})
             
             for tier, tier_data in tiers_data.items():
-                # Get the first IP for this VPS (you can enhance this for multi-IP)
+                # Get the first IP for this VPS
                 ip_address = self.vps_endpoints[vps_name]["ips"][0] if self.vps_endpoints[vps_name]["ips"] else "unknown"
                 
                 available_configs = tier_data.get("available", 0)

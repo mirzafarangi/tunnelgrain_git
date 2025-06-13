@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}VPN Pricing Plans - Tunnelgrain{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content text-center">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold mb-4">
+                        Simple, Transparent Pricing
+                        <span class="d-block text-warning">No Hidden Fees • No Auto-Renewal</span>
+                    </h1>
+                    <p class="lead mb-4 opacity-90">
+                        Choose from flexible plan durations to match your privacy needs. 
+                        From quick tests to lifetime protection - we have the right plan for you.
+                    </p>
+                    
+                    <div class="mb-4">
+                        <span class="badge bg-success fs-6 px-3 py-2">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            30-Day Money-Back Guarantee*
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing Cards -->
+<section class="section-padding">
+    <div class="container">
+        <!-- Free Test -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-8">
+                <div class="card-pricing p-4 text-center position-relative">
+                    <div class="pricing-badge">Try First</div>
+                    
+                    <div class="mb-3">
+                        <i class="fas fa-flask text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h3 class="fw-bold mb-3">{{ service_tiers.test.name }}</h3>
+                    <div class="mb-3">
+                        <span class="display-4 fw-bold text-success">FREE</span>
+                    </div>
+                    <p class="text-muted mb-4">{{ service_tiers.test.description }}</p>
+                    
+                    <ul class="feature-list mb-4">
+                        <li><i class="fas fa-check"></i>Full WireGuard encryption</li>
+                        <li><i class="fas fa-check"></i>All device compatibility</li>
+                        <li><i class="fas fa-check"></i>No registration required</li>
+                        <li><i class="fas fa-check"></i>Experience full performance</li>
+                    </ul>
+                    
+                    <a href="{{ url_for('test') }}" class="btn-secondary-custom btn-lg w-100">
+                        <i class="fas fa-play me-2"></i>Start Free Test
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Paid Plans -->
+        <div class="row g-4">
+            <!-- Monthly Plan -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card-pricing p-4 text-center h-100 position-relative">
+                    <div class="pricing-badge">Most Popular</div>
+                    
+                    <div class="mb-3">
+                        <i class="fas fa-calendar-alt text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">{{ service_tiers.monthly.name }}</h4>
+                    <div class="mb-3">
+                        <span class="display-6 fw-bold text-primary">${{ "%.2f"|format(service_tiers.monthly.price_cents / 100) }}</span>
+                        <span class="text-muted">/month</span>
+                    </div>
+                    <p class="text-muted mb-4">{{ service_tiers.monthly.description }}</p>
+                    
+                    <ul class="feature-list mb-4">
+                        <li><i class="fas fa-check"></i>30 days unlimited access</li>
+                        <li><i class="fas fa-check"></i>Multiple server IPs</li>
+                        <li><i class="fas fa-check"></i>All devices supported</li>
+                        <li><i class="fas fa-check"></i>Email technical support</li>
+                        <li><i class="fas fa-check"></i>{{ service_tiers.monthly.capacity }} slots available</li>
+                    </ul>
+                    
+                    <a href="{{ url_for('order') }}" class="btn-primary-custom w-100">
+                        <i class="fas fa-shopping-cart me-2"></i>Choose Monthly
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 3-Month Plan -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card-pricing p-4 text-center h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-calendar-check text-info" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">{{ service_tiers.quarterly.name }}</h4>
+                    <div class="mb-3">
+                        <span class="display-6 fw-bold text-info">${{ "%.2f"|format(service_tiers.quarterly.price_cents / 100) }}</span>
+                        <span class="text-muted">/3 months</span>
+                    </div>
+                    <p class="text-muted mb-4">{{ service_tiers.quarterly.description }}</p>
+                    
+                    <div class="bg-light rounded p-2 mb-3">
+                        <small class="text-success fw-bold">
+                            <i class="fas fa-piggy-bank me-1"></i>
+                            Save ${{ "%.2f"|format((service_tiers.monthly.price_cents * 3 - service_tiers.quarterly.price_cents) / 100) }} vs Monthly
+                        </small>
+                    </div>
+                    
+                    <ul class="feature-list mb-4">
+                        <li><i class="fas fa-check"></i>90 days unlimited access</li>
+                        <li><i class="fas fa-check"></i>Best value for medium-term use</li>
+                        <li><i class="fas fa-check"></i>All monthly plan features</li>
+                        <li><i class="fas fa-check"></i>Priority support response</li>
+                        <li><i class="fas fa-check"></i>{{ service_tiers.quarterly.capacity }} slots available</li>
+                    </ul>
+                    
+                    <a href="{{ url_for('order') }}" class="btn-secondary-custom w-100">
+                        <i class="fas fa-shopping-cart me-2"></i>Choose 3-Month
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 6-Month Plan -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card-pricing p-4 text-center h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-chart-line text-warning" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">{{ service_tiers.biannual.name }}</h4>
+                    <div class="mb-3">
+                        <span class="display-6 fw-bold text-warning">${{ "%.2f"|format(service_tiers.biannual.price_cents / 100) }}</span>
+                        <span class="text-muted">/6 months</span>
+                    </div>
+                    <p class="text-muted mb-4">{{ service_tiers.biannual.description }}</p>
+                    
+                    <div class="bg-light rounded p-2 mb-3">
+                        <small class="text-success fw-bold">
+                            <i class="fas fa-piggy-bank me-1"></i>
+                            Save ${{ "%.2f"|format((service_tiers.monthly.price_cents * 6 - service_tiers.biannual.price_cents) / 100) }} vs Monthly
+                        </small>
+                    </div>
+                    
+                    <ul class="feature-list mb-4">
+                        <li><i class="fas fa-check"></i>180 days unlimited access</li>
+                        <li><i class="fas fa-check"></i>Excellent long-term value</li>
+                        <li><i class="fas fa-check"></i>All quarterly plan features</li>
+                        <li><i class="fas fa-check"></i>Enhanced support priority</li>
+                        <li><i class="fas fa-check"></i>{{ service_tiers.biannual.capacity }} slots available</li>
+                    </ul>
+                    
+                    <a href="{{ url_for('order') }}" class="btn-secondary-custom w-100">
+                        <i class="fas fa-shopping-cart me-2"></i>Choose 6-Month
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 12-Month Plan -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card-pricing p-4 text-center h-100 position-relative">
+                    <div class="pricing-badge">Best Value</div>
+                    
+                    <div class="mb-3">
+                        <i class="fas fa-trophy text-danger" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">{{ service_tiers.annual.name }}</h4>
+                    <div class="mb-3">
+                        <span class="display-6 fw-bold text-danger">${{ "%.2f"|format(service_tiers.annual.price_cents / 100) }}</span>
+                        <span class="text-muted">/year</span>
+                    </div>
+                    <p class="text-muted mb-4">{{ service_tiers.annual.description }}</p>
+                    
+                    <div class="bg-light rounded p-2 mb-3">
+                        <small class="text-success fw-bold">
+                            <i class="fas fa-piggy-bank me-1"></i>
+                            Save ${{ "%.2f"|format((service_tiers.monthly.price_cents * 12 - service_tiers.annual.price_cents) / 100) }} vs Monthly
+                        </small>
+                    </div>
+                    
+                    <ul class="feature-list mb-4">
+                        <li><i class="fas fa-check"></i>365 days unlimited access</li>
+                        <li><i class="fas fa-check"></i>Maximum savings per month</li>
+                        <li><i class="fas fa-check"></i>All biannual plan features</li>
+                        <li><i class="fas fa-check"></i>VIP support priority</li>
+                        <li><i class="fas fa-check"></i>{{ service_tiers.annual.capacity }} slots available</li>
+                    </ul>
+                    
+                    <a href="{{ url_for('order') }}" class="btn-primary-custom w-100">
+                        <i class="fas fa-crown me-2"></i>Choose Annual
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Lifetime Plan -->
+            <div class="col-lg-8 mx-auto">
+                <div class="card-pricing p-5 text-center position-relative">
+                    <div class="pricing-badge">Premium</div>
+                    
+                    <div class="mb-4">
+                        <i class="fas fa-infinity text-dark" style="font-size: 4rem;"></i>
+                    </div>
+                    <h3 class="fw-bold mb-3">{{ service_tiers.lifetime.name }}</h3>
+                    <div class="mb-4">
+                        <span class="display-4 fw-bold text-dark">${{ "%.2f"|format(service_tiers.lifetime.price_cents / 100) }}</span>
+                        <span class="text-muted h5">/lifetime</span>
+                    </div>
+                    <p class="lead text-muted mb-4">{{ service_tiers.lifetime.description }}</p>
+                    
+                    <div class="row justify-content-center mb-4">
+                        <div class="col-lg-8">
+                            <div class="bg-dark text-white rounded p-3 mb-3">
+                                <strong>
+                                    <i class="fas fa-calculator me-2"></i>
+                                    Pay once, use forever - equivalent to just {{ "%.0f"|format(service_tiers.lifetime.price_cents / service_tiers.monthly.price_cents) }} months!
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <ul class="feature-list">
+                                <li><i class="fas fa-check"></i>Lifetime unlimited access</li>
+                                <li><i class="fas fa-check"></i>Never pay again</li>
+                                <li><i class="fas fa-check"></i>All future features included</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="feature-list">
+                                <li><i class="fas fa-check"></i>Highest support priority</li>
+                                <li><i class="fas fa-check"></i>Exclusive member benefits</li>
+                                <li><i class="fas fa-check"></i>{{ service_tiers.lifetime.capacity }} slots available</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <a href="{{ url_for('order') }}" class="btn-primary-custom btn-lg px-5">
+                        <i class="fas fa-gem me-2"></i>Get Lifetime Access
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Comparison Table -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Plan Comparison</h2>
+            <p class="section-subtitle">Compare features across all our VPN plans</p>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered bg-white">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Feature</th>
+                        <th class="text-center">Test</th>
+                        <th class="text-center">Monthly</th>
+                        <th class="text-center">3-Month</th>
+                        <th class="text-center">6-Month</th>
+                        <th class="text-center">Annual</th>
+                        <th class="text-center">Lifetime</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-bold">Duration</td>
+                        <td class="text-center">15 minutes</td>
+                        <td class="text-center">30 days</td>
+                        <td class="text-center">90 days</td>
+                        <td class="text-center">180 days</td>
+                        <td class="text-center">365 days</td>
+                        <td class="text-center">Forever</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Price</td>
+                        <td class="text-center text-success fw-bold">FREE</td>
+                        <td class="text-center">${{ "%.2f"|format(service_tiers.monthly.price_cents / 100) }}</td>
+                        <td class="text-center">${{ "%.2f"|format(service_tiers.quarterly.price_cents / 100) }}</td>
+                        <td class="text-center">${{ "%.2f"|format(service_tiers.biannual.price_cents / 100) }}</td>
+                        <td class="text-center">${{ "%.2f"|format(service_tiers.annual.price_cents / 100) }}</td>
+                        <td class="text-center">${{ "%.2f"|format(service_tiers.lifetime.price_cents / 100) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Available Slots</td>
+                        <td class="text-center">{{ service_tiers.test.capacity }}</td>
+                        <td class="text-center">{{ service_tiers.monthly.capacity }}</td>
+                        <td class="text-center">{{ service_tiers.quarterly.capacity }}</td>
+                        <td class="text-center">{{ service_tiers.biannual.capacity }}</td>
+                        <td class="text-center">{{ service_tiers.annual.capacity }}</td>
+                        <td class="text-center">{{ service_tiers.lifetime.capacity }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">WireGuard Encryption</td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Multiple Devices</td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Technical Support</td>
+                        <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+                        <td class="text-center">Email</td>
+                        <td class="text-center">Priority</td>
+                        <td class="text-center">Enhanced</td>
+                        <td class="text-center">VIP</td>
+                        <td class="text-center">Premium</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Server IP Choice</td>
+                        <td class="text-center">Auto</td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fas fa-check text-success"></i></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="section-padding">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Pricing Questions</h2>
+            <p class="section-subtitle">Common questions about our VPN plans</p>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="accordion" id="pricingFAQ">
+                    <div class="card-modern mb-3">
+                        <div class="card-header p-0 border-0">
+                            <button class="btn btn-link w-100 text-start p-4 text-decoration-none" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">Are there any hidden fees or auto-renewals?</h6>
+                                    <i class="fas fa-chevron-down text-muted"></i>
+                                </div>
+                            </button>
+                        </div>
+                        <div id="faq1" class="collapse show" data-bs-parent="#pricingFAQ">
+                            <div class="card-body pt-0">
+                                <p class="text-muted">
+                                    No hidden fees, no auto-renewals. You pay once for the duration you choose and that's it. 
+                                    When your plan expires, you'll need to manually purchase a new one if you want to continue.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-modern mb-3">
+                        <div class="card-header p-0 border-0">
+                            <button class="btn btn-link w-100 text-start p-4 text-decoration-none collapsed" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">Do you offer refunds?</h6>
+                                    <i class="fas fa-chevron-down text-muted"></i>
+                                </div>
+                            </button>
+                        </div>
+                        <div id="faq2" class="collapse" data-bs-parent="#pricingFAQ">
+                            <div class="card-body pt-0">
+                                <p class="text-muted">
+                                    We have a strict no-refund policy EXCEPT for proven technical failures on our end. 
+                                    That's why we offer a free 15-minute test so you can verify everything works before purchasing.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-modern mb-3">
+                        <div class="card-header p-0 border-0">
+                            <button class="btn btn-link w-100 text-start p-4 text-decoration-none collapsed" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">Why are there limited slots available?</h6>
+                                    <i class="fas fa-chevron-down text-muted"></i>
+                                </div>
+                            </button>
+                        </div>
+                        <div id="faq3" class="collapse" data-bs-parent="#pricingFAQ">
+                            <div class="card-body pt-0">
+                                <p class="text-muted">
+                                    We intentionally limit capacity to ensure excellent performance for all users. 
+                                    Unlike oversold VPNs, every user gets guaranteed full-speed access.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-modern">
+                        <div class="card-header p-0 border-0">
+                            <button class="btn btn-link w-100 text-start p-4 text-decoration-none collapsed" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">Can I upgrade or downgrade my plan?</h6>
+                                    <i class="fas fa-chevron-down text-muted"></i>
+                                </div>
+                            </button>
+                        </div>
+                        <div id="faq4" class="collapse" data-bs-parent="#pricingFAQ">
+                            <div class="card-body pt-0">
+                                <p class="text-muted">
+                                    Plans cannot be changed once purchased since there are no subscriptions. 
+                                    When your current plan expires, you can purchase any plan duration you prefer.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-6">
+                <div class="card-modern p-5">
+                    <h4 class="fw-bold mb-3">Ready to Get Started?</h4>
+                    <p class="text-muted mb-4">
+                        Choose the plan that fits your needs, or try our free test first 
+                        to experience our service quality.
+                    </p>
+                    
+                    <div class="d-flex gap-3 justify-content-center flex-wrap">
+                        <a href="{{ url_for('test') }}" class="btn-secondary-custom">
+                            <i class="fas fa-play me-2"></i>
+                            Start Free Test
+                        </a>
+                        <a href="{{ url_for('order') }}" class="btn-primary-custom">
+                            <i class="fas fa-shopping-cart me-2"></i>
+                            View All Plans
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add smooth animation to accordion items
+    document.addEventListener('DOMContentLoaded', function() {
+        const accordionButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
+        accordionButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const icon = this.querySelector('.fa-chevron-down');
+                if (icon) {
+                    setTimeout(() => {
+                        if (this.classList.contains('collapsed')) {
+                            icon.style.transform = 'rotate(0deg)';
+                        } else {
+                            icon.style.transform = 'rotate(180deg)';
+                        }
+                    }, 10);
+                }
+            });
+        });
+        
+        // Add hover effects to pricing cards
+        const pricingCards = document.querySelectorAll('.card-pricing');
+        pricingCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-10px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+    });
+</script>
+{% endblock %}
