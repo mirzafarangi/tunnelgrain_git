@@ -413,6 +413,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('pricing') }}">
+                            <i class="fas fa-tags me-1"></i>Pricing
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('test') }}">
                             <i class="fas fa-flask me-1"></i>Free Test
                         </a>
@@ -484,37 +489,41 @@
     <script>
         // Real-time slot status updates
         function updateSlotStatus() {
-            fetch('/api/slot-status')
+            fetch('/api/status')
                 .then(response => response.json())
                 .then(data => {
-                    const monthlyStatus = document.getElementById('monthly-status');
-                    const testStatus = document.getElementById('test-status');
-                    
-                    if (monthlyStatus) {
-                        const monthlyPercent = (data.monthly_available / data.total_monthly) * 100;
-                        const statusClass = monthlyPercent > 50 ? 'status-online' : monthlyPercent > 20 ? 'status-busy' : 'status-offline';
-                        const dotClass = monthlyPercent > 50 ? 'online' : monthlyPercent > 20 ? 'busy' : 'offline';
-                        
-                        monthlyStatus.innerHTML = `
-                            <div class="status-indicator ${statusClass}">
-                                <span class="status-dot ${dotClass}"></span>
-                                ${data.monthly_available}/${data.total_monthly} available
-                            </div>
-                        `;
-                    }
-                    
-                    if (testStatus) {
-                        const testPercent = (data.test_available / data.total_test) * 100;
-                        const statusClass = testPercent > 50 ? 'status-online' : testPercent > 20 ? 'status-busy' : 'status-offline';
-                        const dotClass = testPercent > 50 ? 'online' : testPercent > 20 ? 'busy' : 'offline';
-                        
-                        testStatus.innerHTML = `
-                            <div class="status-indicator ${statusClass}">
-                                <span class="status-dot ${dotClass}"></span>
-                                ${data.test_available}/${data.total_test} available
-                            </div>
-                        `;
-                    }
+                    // Update status indicators if they exist on the page
+                    const elements = ['monthly-status', 'test-status', 'total-ips'];
+                    elements.forEach(id => {
+                        const element = document.getElementById(id);
+                        if (element && data.tiers) {
+                            // Update based on API response
+                            if (id === 'monthly-status' && data.tiers.monthly) {
+                                const available = data.tiers.monthly.available;
+                                const capacity = data.tiers.monthly.capacity;
+                                const percentage = capacity > 0 ? (available / capacity) * 100 : 0;
+                                
+                                let statusClass, dotClass;
+                                if (percentage > 50) {
+                                    statusClass = 'status-online';
+                                    dotClass = 'online';
+                                } else if (percentage > 20) {
+                                    statusClass = 'status-busy';
+                                    dotClass = 'busy';
+                                } else {
+                                    statusClass = 'status-offline';
+                                    dotClass = 'offline';
+                                }
+                                
+                                element.innerHTML = `
+                                    <div class="status-indicator ${statusClass}">
+                                        <span class="status-dot ${dotClass}"></span>
+                                        ${available}/${capacity} monthly slots
+                                    </div>
+                                `;
+                            }
+                        }
+                    });
                 })
                 .catch(err => console.log('Status update failed:', err));
         }
@@ -527,18 +536,21 @@
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
-                });
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
             });
         });
 
         // Add loading states to buttons
         document.addEventListener('DOMContentLoaded', function() {
-            const buttons = document.querySelectorAll('[onclick]');
+            const buttons = document.querySelectorAll('button[type="submit"], .btn-primary-custom, .btn-secondary-custom');
             buttons.forEach(button => {
                 button.addEventListener('click', function() {
-                    if (!this.disabled) {
+                    if (!this.disabled && this.type === 'submit') {
                         const originalText = this.innerHTML;
                         this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
                         this.disabled = true;

@@ -11,9 +11,12 @@
                     <i class="fas fa-server text-primary me-3"></i>
                     Server Status Dashboard
                 </h1>
-                <p class="text-muted">Real-time monitoring of VPN slot availability and system status</p>
+                <p class="text-muted">Real-time monitoring of VPN orders and system status</p>
             </div>
             <div class="d-flex gap-2">
+                <a href="{{ url_for('admin_servers') }}?key={{ request.args.get('key', 'Freud@') }}" class="btn-secondary-custom">
+                    <i class="fas fa-server me-2"></i>VPS Health
+                </a>
                 <button class="btn-secondary-custom" onclick="forceCleanup()">
                     <i class="fas fa-broom me-2"></i>Force Cleanup
                 </button>
@@ -29,14 +32,32 @@
                 <div class="card-modern p-4 text-center">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted mb-1">Monthly VPNs</h6>
-                            <h3 class="fw-bold text-primary mb-0">
-                                {{ slots.monthly.values()|selectattr('available')|list|length }}/10
+                            <h6 class="text-muted mb-1">Total Orders</h6>
+                            <h3 class="fw-bold text-primary mb-0" id="totalOrders">
+                                {{ orders.values()|list|length }}
                             </h3>
-                            <small class="text-muted">Available</small>
+                            <small class="text-muted">All Time</small>
                         </div>
                         <div class="text-primary opacity-75">
-                            <i class="fas fa-users" style="font-size: 2.5rem;"></i>
+                            <i class="fas fa-receipt" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card-modern p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Active Orders</h6>
+                            <h3 class="fw-bold text-success mb-0" id="activeOrders">
+                                {% set active_orders = orders.values()|selectattr('status', 'equalto', 'active')|list %}
+                                {{ active_orders|length }}
+                            </h3>
+                            <small class="text-muted">Currently</small>
+                        </div>
+                        <div class="text-success opacity-75">
+                            <i class="fas fa-play-circle" style="font-size: 2.5rem;"></i>
                         </div>
                     </div>
                 </div>
@@ -47,12 +68,13 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">Test VPNs</h6>
-                            <h3 class="fw-bold text-success mb-0">
-                                {{ slots.test.values()|selectattr('available')|list|length }}/10
+                            <h3 class="fw-bold text-warning mb-0" id="testOrders">
+                                {% set test_orders = orders.values()|selectattr('tier', 'equalto', 'test')|selectattr('status', 'equalto', 'active')|list %}
+                                {{ test_orders|length }}
                             </h3>
-                            <small class="text-muted">Available</small>
+                            <small class="text-muted">Active</small>
                         </div>
-                        <div class="text-success opacity-75">
+                        <div class="text-warning opacity-75">
                             <i class="fas fa-flask" style="font-size: 2.5rem;"></i>
                         </div>
                     </div>
@@ -63,43 +85,27 @@
                 <div class="card-modern p-4 text-center">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted mb-1">Active Monthly</h6>
-                            <h3 class="fw-bold text-warning mb-0">
-                                {{ 10 - (slots.monthly.values()|selectattr('available')|list|length) }}
+                            <h6 class="text-muted mb-1">Paid VPNs</h6>
+                            <h3 class="fw-bold text-info mb-0" id="paidOrders">
+                                {% set paid_orders = orders.values()|rejectattr('tier', 'equalto', 'test')|selectattr('status', 'equalto', 'active')|list %}
+                                {{ paid_orders|length }}
                             </h3>
-                            <small class="text-muted">In Use</small>
-                        </div>
-                        <div class="text-warning opacity-75">
-                            <i class="fas fa-chart-line" style="font-size: 2.5rem;"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="card-modern p-4 text-center">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-1">Active Tests</h6>
-                            <h3 class="fw-bold text-info mb-0">
-                                {{ 10 - (slots.test.values()|selectattr('available')|list|length) }}
-                            </h3>
-                            <small class="text-muted">In Use</small>
+                            <small class="text-muted">Active</small>
                         </div>
                         <div class="text-info opacity-75">
-                            <i class="fas fa-clock" style="font-size: 2.5rem;"></i>
+                            <i class="fas fa-credit-card" style="font-size: 2.5rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Monthly VPN Slots -->
+        <!-- Service Tiers Summary -->
         <div class="card-modern mb-5">
             <div class="card-header bg-primary text-white p-4">
                 <h5 class="fw-bold mb-0">
-                    <i class="fas fa-users me-2"></i>
-                    Monthly VPN Slots
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Service Tiers Status
                 </h5>
             </div>
             <div class="card-body p-0">
@@ -107,60 +113,78 @@
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th class="px-4 py-3">Slot ID</th>
-                                <th class="px-4 py-3">Order Number</th>
+                                <th class="px-4 py-3">Tier</th>
+                                <th class="px-4 py-3">Capacity</th>
+                                <th class="px-4 py-3">Active</th>
+                                <th class="px-4 py-3">Available</th>
+                                <th class="px-4 py-3">Price</th>
+                                <th class="px-4 py-3">Revenue</th>
                                 <th class="px-4 py-3">Status</th>
-                                <th class="px-4 py-3">Assigned</th>
-                                <th class="px-4 py-3">Expires</th>
-                                <th class="px-4 py-3">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for slot_id, slot_data in slots.monthly.items() %}
+                            {% for tier_key, tier_data in service_tiers.items() %}
+                            {% set tier_orders = orders.values()|selectattr('tier', 'equalto', tier_key)|selectattr('status', 'equalto', 'active')|list %}
+                            {% set active_count = tier_orders|length %}
+                            {% set available = tier_data.capacity - active_count %}
+                            {% set utilization = (active_count / tier_data.capacity * 100) if tier_data.capacity > 0 else 0 %}
                             <tr>
                                 <td class="px-4 py-3">
-                                    <code class="bg-light p-2 rounded">{{ slot_id }}</code>
+                                    <div class="d-flex align-items-center">
+                                        {% if tier_key == 'test' %}
+                                            <i class="fas fa-flask text-success me-2"></i>
+                                        {% elif tier_key == 'monthly' %}
+                                            <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                        {% elif tier_key == 'quarterly' %}
+                                            <i class="fas fa-calendar-check text-info me-2"></i>
+                                        {% elif tier_key == 'biannual' %}
+                                            <i class="fas fa-chart-line text-warning me-2"></i>
+                                        {% elif tier_key == 'annual' %}
+                                            <i class="fas fa-trophy text-danger me-2"></i>
+                                        {% elif tier_key == 'lifetime' %}
+                                            <i class="fas fa-infinity text-dark me-2"></i>
+                                        {% endif %}
+                                        <strong>{{ tier_data.name }}</strong>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3">
-                                    {% if slot_data.get('order_number') %}
-                                        <code class="bg-warning text-dark p-1 rounded">{{ slot_data.order_number }}</code>
+                                    <span class="badge bg-secondary">{{ tier_data.capacity }}</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="badge bg-warning">{{ active_count }}</span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="badge {% if available > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ available }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if tier_data.price_cents > 0 %}
+                                        <strong>${{ "%.2f"|format(tier_data.price_cents / 100) }}</strong>
+                                    {% else %}
+                                        <span class="text-success"><strong>FREE</strong></span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if tier_data.price_cents > 0 %}
+                                        <strong>${{ "%.2f"|format((active_count * tier_data.price_cents) / 100) }}</strong>
                                     {% else %}
                                         <span class="text-muted">—</span>
                                     {% endif %}
                                 </td>
                                 <td class="px-4 py-3">
-                                    {% if slot_data.available %}
+                                    {% if utilization < 50 %}
                                         <span class="status-indicator status-online">
                                             <span class="status-dot online"></span>Available
                                         </span>
-                                    {% else %}
+                                    {% elif utilization < 90 %}
                                         <span class="status-indicator status-busy">
-                                            <span class="status-dot busy"></span>In Use
+                                            <span class="status-dot busy"></span>Busy
                                         </span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-4 py-3">
-                                    {% if slot_data.assigned_at %}
-                                        <small class="text-muted">{{ slot_data.assigned_at[:19].replace('T', ' ') }}</small>
                                     {% else %}
-                                        <span class="text-muted">—</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-4 py-3">
-                                    {% if slot_data.expires_at %}
-                                        <small class="text-muted">{{ slot_data.expires_at[:19].replace('T', ' ') }}</small>
-                                    {% else %}
-                                        <span class="text-muted">—</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-4 py-3">
-                                    {% if not slot_data.available %}
-                                        <button class="btn btn-sm btn-outline-danger" 
-                                                onclick="releaseSlot('monthly', '{{ slot_id }}')">
-                                            <i class="fas fa-times me-1"></i>Release
-                                        </button>
-                                    {% else %}
-                                        <span class="text-muted">—</span>
+                                        <span class="status-indicator status-offline">
+                                            <span class="status-dot offline"></span>Full
+                                        </span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -171,12 +195,12 @@
             </div>
         </div>
         
-        <!-- Test VPN Slots -->
-        <div class="card-modern">
+        <!-- Recent Orders -->
+        <div class="card-modern mb-5">
             <div class="card-header bg-success text-white p-4">
                 <h5 class="fw-bold mb-0">
-                    <i class="fas fa-flask me-2"></i>
-                    Test VPN Slots
+                    <i class="fas fa-clock me-2"></i>
+                    Recent Orders (Last 20)
                 </h5>
             </div>
             <div class="card-body p-0">
@@ -184,63 +208,81 @@
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th class="px-4 py-3">Slot ID</th>
                                 <th class="px-4 py-3">Order Number</th>
+                                <th class="px-4 py-3">Tier</th>
                                 <th class="px-4 py-3">Status</th>
                                 <th class="px-4 py-3">Assigned</th>
                                 <th class="px-4 py-3">Expires</th>
+                                <th class="px-4 py-3">IP Address</th>
                                 <th class="px-4 py-3">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for slot_id, slot_data in slots.test.items() %}
+                            {% for order_id, order_data in orders.items() %}
+                            {% if loop.index <= 20 %}
                             <tr>
                                 <td class="px-4 py-3">
-                                    <code class="bg-light p-2 rounded">{{ slot_id }}</code>
-                                </td>
-                                <td class="px-4 py-3">
-                                    {% if slot_data.get('order_number') %}
-                                        <code class="bg-info text-white p-1 rounded">{{ slot_data.order_number }}</code>
+                                    {% if order_data.get('order_number') %}
+                                        <code class="{% if order_data.tier == 'test' %}bg-info text-white{% else %}bg-warning text-dark{% endif %} p-1 rounded">
+                                            {{ order_data.order_number }}
+                                        </code>
                                     {% else %}
                                         <span class="text-muted">—</span>
                                     {% endif %}
                                 </td>
                                 <td class="px-4 py-3">
-                                    {% if slot_data.available %}
+                                    {% if order_data.tier %}
+                                        <span class="badge {% if order_data.tier == 'test' %}bg-success{% elif order_data.tier == 'monthly' %}bg-primary{% elif order_data.tier == 'quarterly' %}bg-info{% elif order_data.tier == 'biannual' %}bg-warning{% elif order_data.tier == 'annual' %}bg-danger{% elif order_data.tier == 'lifetime' %}bg-dark{% endif %}">
+                                            {{ service_tiers[order_data.tier].name }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if order_data.status == 'active' %}
                                         <span class="status-indicator status-online">
-                                            <span class="status-dot online"></span>Available
+                                            <span class="status-dot online"></span>Active
                                         </span>
                                     {% else %}
-                                        <span class="status-indicator status-busy">
-                                            <span class="status-dot busy"></span>In Use
+                                        <span class="status-indicator status-offline">
+                                            <span class="status-dot offline"></span>Expired
                                         </span>
                                     {% endif %}
                                 </td>
                                 <td class="px-4 py-3">
-                                    {% if slot_data.assigned_at %}
-                                        <small class="text-muted">{{ slot_data.assigned_at[:19].replace('T', ' ') }}</small>
+                                    {% if order_data.assigned_at %}
+                                        <small class="text-muted">{{ order_data.assigned_at[:19].replace('T', ' ') }}</small>
                                     {% else %}
                                         <span class="text-muted">—</span>
                                     {% endif %}
                                 </td>
                                 <td class="px-4 py-3">
-                                    {% if slot_data.expires_at %}
-                                        <small class="text-muted">{{ slot_data.expires_at[:19].replace('T', ' ') }}</small>
+                                    {% if order_data.expires_at %}
+                                        <small class="text-muted">{{ order_data.expires_at[:19].replace('T', ' ') }}</small>
                                     {% else %}
                                         <span class="text-muted">—</span>
                                     {% endif %}
                                 </td>
                                 <td class="px-4 py-3">
-                                    {% if not slot_data.available %}
+                                    {% if order_data.ip_address %}
+                                        <code class="bg-light p-1 rounded">{{ order_data.ip_address }}</code>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if order_data.status == 'active' %}
                                         <button class="btn btn-sm btn-outline-danger" 
-                                                onclick="releaseSlot('test', '{{ slot_id }}')">
-                                            <i class="fas fa-times me-1"></i>Release
+                                                onclick="expireOrder('{{ order_id }}', '{{ order_data.order_number }}')">
+                                            <i class="fas fa-times me-1"></i>Expire
                                         </button>
                                     {% else %}
                                         <span class="text-muted">—</span>
                                     {% endif %}
                                 </td>
                             </tr>
+                            {% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
@@ -264,8 +306,8 @@
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <small class="text-muted">Auto-refresh</small>
-                            <div class="text-dark">Every 30 seconds</div>
+                            <small class="text-muted">VPS Endpoint</small>
+                            <div class="text-dark">213.170.133.116:8080</div>
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">VPN Protocol</small>
@@ -285,15 +327,15 @@
 
 {% block scripts %}
 <script>
-    // Admin key for API calls
-    const ADMIN_KEY = 'tunnelgrain_admin_secret_2024_xyz';
+    // Use the correct admin key from environment
+    const ADMIN_KEY = 'Freud@';
     
-    async function releaseSlot(slotType, slotId) {
-        if (confirm(`Are you sure you want to release ${slotId}?\n\nThis will immediately disconnect the user and make the slot available for others.`)) {
+    async function expireOrder(orderId, orderNumber) {
+        if (confirm(`Are you sure you want to expire order ${orderNumber}?\n\nThis will immediately disconnect the user and mark the order as expired.`)) {
             try {
-                showNotification('info', 'Processing', 'Releasing slot...');
+                showNotification('info', 'Processing', 'Expiring order...');
                 
-                const response = await fetch('/api/force-cleanup', {
+                const response = await fetch('/admin/force-cleanup', {
                     method: 'POST',
                     headers: {
                         'X-Admin-Key': ADMIN_KEY,
@@ -303,25 +345,24 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    showNotification('success', 'Cleanup Complete', `Expired slots have been released. Cleaned: ${data.cleaned_slots ? data.cleaned_slots.length : 0} slots.`);
+                    showNotification('success', 'Order Expired', `Order ${orderNumber} has been expired.`);
                     setTimeout(() => window.location.reload(), 1000);
                 } else {
-                    const errorText = await response.text();
-                    showNotification('error', 'Error', `Failed to release slots: ${response.status}`);
+                    showNotification('error', 'Error', `Failed to expire order: ${response.status}`);
                 }
             } catch (error) {
-                console.error('Release slot error:', error);
+                console.error('Expire order error:', error);
                 showNotification('error', 'Connection Error', 'Failed to connect to server.');
             }
         }
     }
     
     async function forceCleanup() {
-        if (confirm('Force cleanup all expired slots?\n\nThis will release all expired VPN connections.')) {
+        if (confirm('Force cleanup all expired orders?\n\nThis will mark all expired VPN connections as expired in the database.')) {
             try {
-                showNotification('info', 'Processing', 'Cleaning up expired slots...');
+                showNotification('info', 'Processing', 'Cleaning up expired orders...');
                 
-                const response = await fetch('/api/force-cleanup', {
+                const response = await fetch('/admin/force-cleanup', {
                     method: 'POST',
                     headers: {
                         'X-Admin-Key': ADMIN_KEY,
@@ -331,8 +372,7 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    const cleanedCount = (data.cleaned_monthly || 0) + (data.cleaned_test || 0);
-                    showNotification('success', 'Cleanup Complete', `Cleaned up ${cleanedCount} expired slots.`);
+                    showNotification('success', 'Cleanup Complete', `Cleaned up ${data.expired_count || 0} expired orders.`);
                     setTimeout(() => window.location.reload(), 1000);
                 } else {
                     showNotification('error', 'Error', `Cleanup failed: ${response.status}`);
@@ -402,22 +442,6 @@
     // Update timestamp every second
     setInterval(updateTimestamp, 1000);
     updateTimestamp();
-    
-    // Pause auto-refresh when user is actively viewing
-    let userActive = true;
-    let activityTimer;
-    
-    function resetActivityTimer() {
-        userActive = true;
-        clearTimeout(activityTimer);
-        activityTimer = setTimeout(() => {
-            userActive = false;
-        }, 60000); // Consider user inactive after 1 minute
-    }
-    
-    document.addEventListener('mousemove', resetActivityTimer);
-    document.addEventListener('keypress', resetActivityTimer);
-    document.addEventListener('scroll', resetActivityTimer);
     
     // Visual feedback for table rows
     document.addEventListener('DOMContentLoaded', function() {

@@ -6,45 +6,193 @@
 <section class="section-padding">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-lg-6">
+            <div class="col-lg-8">
                 <div class="card-modern p-5 text-center">
                     <div class="mb-4">
-                        <i class="fas fa-search text-primary" style="font-size: 3rem;"></i>
+                        <i class="fas fa-search text-primary" style="font-size: 4rem;"></i>
                     </div>
                     
                     <h2 class="fw-bold mb-3">Check Your VPN Status</h2>
-                    <p class="text-muted mb-4">
-                        Enter your order number to check your VPN expiration and download status.
-                        No personal information required.
+                    <p class="text-muted mb-5">
+                        Enter your order number to check your VPN expiration status and download your configuration files.
+                        Your privacy is protected - no personal information is stored or required.
                     </p>
                     
                     <form id="orderForm">
                         <div class="mb-4">
-                            <label class="form-label fw-bold">Order Number</label>
+                            <label class="form-label fw-bold text-start d-block">Order Number</label>
                             <input type="text" class="form-control-modern text-center" 
-                                   id="orderNumber" placeholder="42XXXXXX" 
-                                   style="font-family: monospace; font-size: 1.2rem;"
+                                   id="orderNumber" placeholder="42XXXXXX or 72XXXXXX" 
+                                   style="font-family: monospace; font-size: 1.3rem; height: 60px;"
                                    maxlength="8" required>
-                            <small class="text-muted">
-                                8-digit number starting with "42" from your purchase confirmation
-                            </small>
+                            <div class="form-text text-muted mt-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                8-digit number from your purchase confirmation email
+                                <br>
+                                <small>
+                                    • Orders starting with <strong>42</strong> are paid VPN plans
+                                    <br>
+                                    • Orders starting with <strong>72</strong> are test VPN accounts
+                                </small>
+                            </div>
                         </div>
                         
-                        <button type="submit" class="btn-primary-custom btn-lg w-100">
+                        <button type="submit" class="btn-primary-custom btn-lg w-100 py-3 mb-4">
                             <i class="fas fa-search me-2"></i>
                             Check Order Status
                         </button>
                     </form>
                     
                     <div id="orderResult" class="mt-4" style="display: none;">
-                        <!-- Results will be inserted here -->
+                        <!-- Results will be dynamically inserted here -->
                     </div>
                     
-                    <div class="mt-4">
-                        <small class="text-muted">
-                            <i class="fas fa-shield-alt me-1"></i>
-                            No personal data stored • Privacy protected
-                        </small>
+                    <div class="row mt-5">
+                        <div class="col-md-4">
+                            <div class="text-center p-3">
+                                <i class="fas fa-shield-alt text-success mb-2" style="font-size: 2rem;"></i>
+                                <h6 class="fw-bold">Secure Lookup</h6>
+                                <small class="text-muted">No personal data required</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3">
+                                <i class="fas fa-download text-primary mb-2" style="font-size: 2rem;"></i>
+                                <h6 class="fw-bold">Re-download Files</h6>
+                                <small class="text-muted">Get your configs anytime</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3">
+                                <i class="fas fa-clock text-warning mb-2" style="font-size: 2rem;"></i>
+                                <h6 class="fw-bold">Check Expiration</h6>
+                                <small class="text-muted">See remaining time</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Help Section -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Need Help Finding Your Order?</h2>
+            <p class="section-subtitle">Common solutions for order lookup issues</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card-modern p-4 h-100 text-center">
+                    <i class="fas fa-envelope text-primary mb-3" style="font-size: 2.5rem;"></i>
+                    <h5 class="fw-bold mb-3">Check Your Email</h5>
+                    <p class="text-muted">
+                        Your order number was sent to the email address used during checkout. 
+                        Search for "Tunnelgrain" or "Order Confirmation" in your inbox.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card-modern p-4 h-100 text-center">
+                    <i class="fas fa-history text-success mb-3" style="font-size: 2.5rem;"></i>
+                    <h5 class="fw-bold mb-3">Browser History</h5>
+                    <p class="text-muted">
+                        Check your browser history for the payment success page, which contains 
+                        your order number and download links.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card-modern p-4 h-100 text-center">
+                    <i class="fas fa-headset text-warning mb-3" style="font-size: 2.5rem;"></i>
+                    <h5 class="fw-bold mb-3">Contact Support</h5>
+                    <p class="text-muted">
+                        Can't find your order? Contact our support team with your payment details 
+                        for assistance recovering your order information.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-5">
+            <a href="{{ url_for('contact') }}" class="btn-secondary-custom btn-lg">
+                <i class="fas fa-envelope me-2"></i>
+                Contact Support Team
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Order Types Info -->
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card-modern p-5">
+                    <h4 class="fw-bold mb-4 text-center">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        Understanding Your Order Number
+                    </h4>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="bg-light rounded p-4 h-100">
+                                <h5 class="fw-bold text-primary mb-3">
+                                    <i class="fas fa-credit-card me-2"></i>
+                                    Paid VPN Orders (42XXXXXX)
+                                </h5>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Monthly, 3-month, 6-month, annual, and lifetime plans
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Purchased through Stripe checkout
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Full access for the purchased duration
+                                    </li>
+                                    <li class="mb-0">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Configuration files and QR codes included
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="bg-light rounded p-4 h-100">
+                                <h5 class="fw-bold text-success mb-3">
+                                    <i class="fas fa-flask me-2"></i>
+                                    Test VPN Orders (72XXXXXX)
+                                </h5>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <i class="fas fa-clock text-warning me-2"></i>
+                                        15-minute free trial access
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-clock text-warning me-2"></i>
+                                        No payment required
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-clock text-warning me-2"></i>
+                                        Automatically expires after 15 minutes
+                                    </li>
+                                    <li class="mb-0">
+                                        <i class="fas fa-clock text-warning me-2"></i>
+                                        Limited to 3 tests per day per device
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -60,17 +208,25 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
     
     const orderNumber = document.getElementById('orderNumber').value.trim().toUpperCase();
     const resultDiv = document.getElementById('orderResult');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
     
-    if (!orderNumber.match(/^42[A-Z0-9]{6}$/)) {
+    // Validate order number format
+    if (!orderNumber.match(/^(42|72)[A-Z0-9]{6}$/)) {
         resultDiv.innerHTML = `
             <div class="alert alert-warning">
                 <i class="fas fa-exclamation-triangle me-2"></i>
-                Please enter a valid 8-digit order number starting with "42"
+                <strong>Invalid Format</strong><br>
+                Please enter a valid 8-digit order number starting with "42" or "72"
             </div>
         `;
         resultDiv.style.display = 'block';
         return;
     }
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking order status...';
     
     try {
         const response = await fetch('/check-order', {
@@ -85,55 +241,167 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
             resultDiv.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-times-circle me-2"></i>
+                    <strong>Order Not Found</strong><br>
                     ${data.error}
                 </div>
             `;
         } else if (data.order_found) {
+            // Determine order type and styling
+            const isTestOrder = orderNumber.startsWith('72');
+            const statusClass = data.status === 'active' ? 'success' : 'danger';
+            const statusIcon = data.status === 'active' ? 'check-circle' : 'times-circle';
+            
             resultDiv.innerHTML = `
-                <div class="alert alert-success">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-check-circle me-2"></i>
-                        <strong>Order Found!</strong>
+                <div class="alert alert-${statusClass}">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-${statusIcon} me-2" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <strong>Order Found!</strong><br>
+                            <small>${data.tier_name || 'VPN Service'}</small>
+                        </div>
                     </div>
+                    
                     <div class="row text-start">
-                        <div class="col-6">
-                            <small class="text-muted">Status:</small><br>
-                            <span class="badge ${data.status === 'active' ? 'bg-success' : 'bg-danger'}">${data.status}</span>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <strong>Order Number:</strong><br>
+                                <code class="bg-light text-dark p-2 rounded">${orderNumber}</code>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Service Type:</strong><br>
+                                ${isTestOrder ? 
+                                    '<span class="badge bg-success">Free Test</span>' : 
+                                    '<span class="badge bg-primary">Paid VPN</span>'
+                                }
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <small class="text-muted">Time Remaining:</small><br>
-                            <strong>${data.time_remaining}</strong>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <strong>Status:</strong><br>
+                                <span class="badge bg-${statusClass}">${data.status.toUpperCase()}</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Time Remaining:</strong><br>
+                                <span class="fw-bold">${data.time_remaining}</span>
+                            </div>
                         </div>
                     </div>
+                    
+                    ${data.status === 'active' ? `
+                        <div class="row g-2 mt-3">
+                            <div class="col-md-6">
+                                <a href="/download-${isTestOrder ? 'test' : 'purchase'}-config" 
+                                   class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-file-alt me-2"></i>
+                                    Download Config File
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="/download-${isTestOrder ? 'test' : 'purchase'}-qr" 
+                                   class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-qrcode me-2"></i>
+                                    Download QR Code
+                                </a>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="mt-3 p-3 bg-light rounded">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                This VPN access has expired. ${isTestOrder ? 
+                                    'You can get another free 15-minute test or purchase a monthly plan.' :
+                                    'Please purchase a new plan to continue using our VPN service.'
+                                }
+                            </small>
+                        </div>
+                    `}
                 </div>
             `;
+            
+            // Store order info in session for downloads (if active)
+            if (data.status === 'active') {
+                sessionStorage.setItem('currentOrder', JSON.stringify({
+                    orderNumber: orderNumber,
+                    isTest: isTestOrder,
+                    status: data.status
+                }));
+            }
         } else {
             resultDiv.innerHTML = `
                 <div class="alert alert-warning">
                     <i class="fas fa-question-circle me-2"></i>
-                    Order not found. Please check your order number or contact support.
+                    <strong>Order Not Found</strong><br>
+                    The order number "${orderNumber}" was not found in our system. Please check the number and try again.
                 </div>
             `;
         }
         
         resultDiv.style.display = 'block';
         
+        // Scroll to results
+        resultDiv.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest' 
+        });
+        
     } catch (error) {
+        console.error('Order lookup error:', error);
         resultDiv.innerHTML = `
             <div class="alert alert-danger">
                 <i class="fas fa-exclamation-triangle me-2"></i>
-                Connection error. Please try again.
+                <strong>Connection Error</strong><br>
+                Unable to check order status. Please check your internet connection and try again.
             </div>
         `;
         resultDiv.style.display = 'block';
+    } finally {
+        // Restore button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
     }
 });
 
-// Auto-format input
+// Auto-format and validate input
 document.getElementById('orderNumber').addEventListener('input', function(e) {
     let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (value.length > 8) value = value.substring(0, 8);
     e.target.value = value;
+    
+    // Visual feedback for format
+    const isValid = value.match(/^(42|72)[A-Z0-9]{6}$/);
+    if (value.length === 8) {
+        if (isValid) {
+            e.target.classList.remove('is-invalid');
+            e.target.classList.add('is-valid');
+        } else {
+            e.target.classList.remove('is-valid');
+            e.target.classList.add('is-invalid');
+        }
+    } else {
+        e.target.classList.remove('is-valid', 'is-invalid');
+    }
+});
+
+// Clear previous results when user starts typing
+document.getElementById('orderNumber').addEventListener('focus', function() {
+    const resultDiv = document.getElementById('orderResult');
+    if (resultDiv.style.display === 'block') {
+        resultDiv.style.display = 'none';
+    }
+});
+
+// Add helpful placeholder animation
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('orderNumber');
+    const placeholders = ['42ABCD12', '72EFGH34', '42IJKL56', '72MNOP78'];
+    let currentIndex = 0;
+    
+    setInterval(() => {
+        if (input === document.activeElement || input.value) return; // Don't change if focused or has value
+        
+        input.placeholder = placeholders[currentIndex];
+        currentIndex = (currentIndex + 1) % placeholders.length;
+    }, 3000);
 });
 </script>
 {% endblock %}
