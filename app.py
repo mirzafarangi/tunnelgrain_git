@@ -131,50 +131,15 @@ def get_client_fingerprint(request):
     logger.info(f"Fingerprint created: {fingerprint} from IP: {real_ip}")
     return fingerprint
 
-def generate_dummy_config(config_id, tier, order_number):
-    """Generate a dummy WireGuard config for download"""
-    config_content = f"""[Interface]
-# Tunnelgrain VPN Configuration
-# Order: {order_number}
-# Tier: {tier}
-# Generated: {datetime.now().isoformat()}
-PrivateKey = DUMMY_PRIVATE_KEY_{config_id}
-Address = 10.0.0.{int(config_id[-2:], 16) % 254 + 1}/32
-DNS = 1.1.1.1, 8.8.8.8
+def get_real_config_path(config_id, tier, vps_name='vps_1', vps_ip='213.170.133.116'):
+    """Get the path to the real config file"""
+    config_path = f"data/{vps_name}/ip_{vps_ip}/{tier}/{config_id}.conf"
+    return config_path
 
-[Peer]
-PublicKey = DUMMY_PUBLIC_KEY_SERVER
-PresharedKey = DUMMY_PRESHARED_KEY_{config_id}
-Endpoint = {VPS_IP}:51820
-AllowedIPs = 0.0.0.0/0, ::/0
-PersistentKeepalive = 25
-
-# IMPORTANT: This is a placeholder configuration.
-# The actual configuration will be provided by your VPN administrator.
-# Config ID: {config_id}
-"""
-    return config_content
-
-def generate_dummy_qr_image():
-    """Generate a placeholder QR code image"""
-    try:
-        import qrcode
-        from PIL import Image
-        
-        qr = qrcode.QRCode(version=1, box_size=10, border=5)
-        qr.add_data("https://tunnelgrain.com/setup")
-        qr.make(fit=True)
-        
-        img = qr.make_image(fill_color="black", back_color="white")
-        
-        img_io = io.BytesIO()
-        img.save(img_io, 'PNG')
-        img_io.seek(0)
-        
-        return img_io
-    except:
-        # Return a 1x1 transparent PNG if qrcode generation fails
-        return io.BytesIO(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\x0bIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x00\x05\x00\x01\x0d\n\x00\x00\x00\x00IEND\xaeB`\x82')
+def get_real_qr_path(config_id, tier, vps_name='vps_1', vps_ip='213.170.133.116'):
+    """Get the path to the real QR code file"""
+    qr_path = f"static/qr_codes/{vps_name}/ip_{vps_ip}/{tier}/{config_id}.png"
+    return qr_path
 
 # === MAIN ROUTES ===
 
@@ -469,24 +434,25 @@ def download_test_config():
     order_number = session.get('test_order', 'unknown')
     
     try:
-        # Generate dummy config content
-        config_content = generate_dummy_config(config_id, 'test', order_number)
+        # Get path to real config file
+        config_path = get_real_config_path(config_id, 'test')
         
-        # Create in-memory file
-        config_io = io.BytesIO(config_content.encode('utf-8'))
-        config_io.seek(0)
+        # Check if file exists
+        if not os.path.exists(config_path):
+            logger.error(f"Config file not found: {config_path}")
+            return "Config file not found. Please contact support.", 404
         
-        logger.info(f"✅ Serving test config: {order_number} ({config_id})")
+        logger.info(f"✅ Serving test config: {order_number} ({config_id}) from {config_path}")
         
         return send_file(
-            config_io,
+            config_path,
             as_attachment=True,
             download_name=f"tunnelgrain_{order_number}.conf",
             mimetype='application/octet-stream'
         )
     except Exception as e:
         logger.error(f"❌ Error serving test config: {e}")
-        return "Error generating config file. Please contact support.", 500
+        return "Error serving config file. Please contact support.", 500
 
 @app.route('/download-test-qr')
 def download_test_qr():
@@ -494,23 +460,29 @@ def download_test_qr():
     if 'test_config' not in session:
         return "No test VPN assigned", 404
     
+    config_id = session['test_config']
     order_number = session.get('test_order', 'unknown')
     
     try:
-        # Generate dummy QR code
-        qr_io = generate_dummy_qr_image()
+        # Get path to real QR file
+        qr_path = get_real_qr_path(config_id, 'test')
         
-        logger.info(f"✅ Serving test QR: {order_number}")
+        # Check if file exists
+        if not os.path.exists(qr_path):
+            logger.error(f"QR file not found: {qr_path}")
+            return "QR code not found. Please contact support.", 404
+        
+        logger.info(f"✅ Serving test QR: {order_number} ({config_id}) from {qr_path}")
         
         return send_file(
-            qr_io,
+            qr_path,
             as_attachment=True,
             download_name=f"tunnelgrain_{order_number}_qr.png",
             mimetype='image/png'
         )
     except Exception as e:
         logger.error(f"❌ Error serving test QR: {e}")
-        return "Error generating QR code. Please contact support.", 500
+        return "Error serving QR code. Please contact support.", 500
 
 @app.route('/download-purchase-config')
 def download_purchase_config():
@@ -523,24 +495,25 @@ def download_purchase_config():
     order_number = session.get('purchase_order', 'unknown')
     
     try:
-        # Generate dummy config content
-        config_content = generate_dummy_config(config_id, tier, order_number)
+        # Get path to real config file
+        config_path = get_real_config_path(config_id, tier)
         
-        # Create in-memory file
-        config_io = io.BytesIO(config_content.encode('utf-8'))
-        config_io.seek(0)
+        # Check if file exists
+        if not os.path.exists(config_path):
+            logger.error(f"Config file not found: {config_path}")
+            return "Config file not found. Please contact support.", 404
         
-        logger.info(f"✅ Serving purchase config: {order_number} ({tier}/{config_id})")
+        logger.info(f"✅ Serving purchase config: {order_number} ({tier}/{config_id}) from {config_path}")
         
         return send_file(
-            config_io,
+            config_path,
             as_attachment=True,
             download_name=f"tunnelgrain_{order_number}.conf",
             mimetype='application/octet-stream'
         )
     except Exception as e:
         logger.error(f"❌ Error serving purchase config: {e}")
-        return "Error generating config file. Please contact support.", 500
+        return "Error serving config file. Please contact support.", 500
 
 @app.route('/download-purchase-qr')
 def download_purchase_qr():
@@ -548,24 +521,31 @@ def download_purchase_qr():
     if 'purchase_config' not in session:
         return "No VPN purchased", 404
     
+    config_id = session['purchase_config']
+    tier = session.get('purchase_tier')
     order_number = session.get('purchase_order', 'unknown')
     
     try:
-        # Generate dummy QR code
-        qr_io = generate_dummy_qr_image()
+        # Get path to real QR file
+        qr_path = get_real_qr_path(config_id, tier)
         
-        logger.info(f"✅ Serving purchase QR: {order_number}")
+        # Check if file exists
+        if not os.path.exists(qr_path):
+            logger.error(f"QR file not found: {qr_path}")
+            return "QR code not found. Please contact support.", 404
+        
+        logger.info(f"✅ Serving purchase QR: {order_number} ({tier}/{config_id}) from {qr_path}")
         
         return send_file(
-            qr_io,
+            qr_path,
             as_attachment=True,
             download_name=f"tunnelgrain_{order_number}_qr.png",
             mimetype='image/png'
         )
     except Exception as e:
         logger.error(f"❌ Error serving purchase QR: {e}")
-        return "Error generating QR code. Please contact support.", 500
-
+        return "Error serving QR code. Please contact support.", 500
+    
 # === ORDER LOOKUP ===
 
 @app.route('/check-order', methods=['POST'])
