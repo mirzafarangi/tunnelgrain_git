@@ -112,7 +112,7 @@ class TunnelgrainDB:
                 json.dump({'orders': {}, 'daily_limits': {}}, f)
     
     def check_daily_limit(self, user_fingerprint, tier='test'):
-        """Check if user has exceeded daily limits"""
+        """Check if user has exceeded daily limits - FIXED VERSION"""
         if tier != 'test':
             return True  # No limits for paid tiers
         
@@ -133,26 +133,32 @@ class TunnelgrainDB:
                     WHERE date < CURRENT_DATE - INTERVAL '7 days'
                 """)
                 
-                # Check today's count for this fingerprint
+                # Check if record exists for today
                 cursor.execute("""
                     SELECT test_count FROM daily_limits 
                     WHERE fingerprint = %s AND date = %s
                 """, (user_fingerprint, today))
                 
                 result = cursor.fetchone()
-                current_count = result[0] if result else 0
+                
+                if result is None:
+                    # No record exists, user can test
+                    current_count = 0
+                else:
+                    current_count = result[0] if result[0] is not None else 0
                 
                 conn.commit()
                 cursor.close()
                 conn.close()
                 
-                logger.info(f"Daily limit check for {user_fingerprint[:8]}...: {current_count}/3 tests used today")
-                return current_count < 3  # Allow 3 tests per day
+                can_test = current_count < 3
+                logger.info(f"Daily limit check for {user_fingerprint[:8]}...: {current_count}/3 tests used today, can_test={can_test}")
+                return can_test
                 
             except Exception as e:
                 logger.error(f"❌ Error checking daily limit: {e}")
-                # On error, deny to prevent abuse
-                return False
+                # On database error, allow the test to prevent blocking users
+                return True
         else:
             # JSON mode
             try:
@@ -163,13 +169,13 @@ class TunnelgrainDB:
                 today_key = today.isoformat()
                 
                 if user_fingerprint not in limits:
-                    limits[user_fingerprint] = {}
+                    return True  # No record, can test
                 
                 current_count = limits[user_fingerprint].get(today_key, 0)
                 return current_count < 3
             except Exception as e:
                 logger.error(f"❌ JSON daily limit check error: {e}")
-                return False
+                return True  # Allow on error
     
     def increment_daily_limit(self, user_fingerprint):
         """Increment daily test count"""
@@ -336,16 +342,16 @@ class TunnelgrainDB:
                 logger.error(f"No endpoint configured for {vps_name}")
                 return False
             
-            # Call VPS API to start timer
+            # Call VPS API to start timer with short timeout
             response = requests.post(
                 f"{vps_endpoint}/api/start-timer",
                 json={
                     'order_number': order_number,
                     'tier': tier,
                     'duration_minutes': duration_minutes,
-                    'config_id': config_id  # Pass config_id to daemon
+                    'config_id': config_id
                 },
-                timeout=5  # Reduced timeout
+                timeout=3  # Very short timeout
             )
             
             if response.status_code == 200:
@@ -379,6 +385,9 @@ class TunnelgrainDB:
                 logger.error(f"❌ VPS timer failed: {response.status_code}")
                 return False
                 
+        except requests.exceptions.Timeout:
+            logger.warning(f"⚠️ VPS timer timeout - continuing without timer")
+            return False
         except requests.exceptions.RequestException as e:
             logger.error(f"❌ VPS connection error: {e}")
             return False

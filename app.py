@@ -416,7 +416,7 @@ def create_checkout_session():
 
 @app.route('/payment-success')
 def payment_success():
-    """Handle successful payment with proper validation"""
+    """Handle successful payment with proper validation - FIXED VERSION"""
     session_id = request.args.get('session_id')
     
     if not session_id:
@@ -447,7 +447,6 @@ def payment_success():
         
         # Verify config file exists
         config_path = os.path.join(DATA_DIR, tier, f"{config_id}.conf")
-        qr_path = os.path.join(QR_DIR, tier, f"{config_id}.png")
         
         if not os.path.exists(config_path):
             logger.error(f"❌ Config file not found: {config_path}")
@@ -456,9 +455,6 @@ def payment_success():
             if available_configs:
                 config_id = available_configs[0]
                 logger.info(f"Using fallback config: {config_id}")
-            else:
-                # Still allow download with temporary order number
-                config_id = "temporary"
         
         # Create order with VPS timer
         user_fingerprint = get_client_fingerprint(request)
@@ -492,10 +488,12 @@ def payment_success():
             
         else:
             logger.error(f"❌ Failed to create order for paid session {session_id}")
-            # Still show success page but with support message
+            # Generate a proper temporary order number
+            temp_order_number = f"42{uuid.uuid4().hex[:6].upper()}"
+            
             order_data = {
-                'order_id': f"TEMP-{session_id[:8]}",
-                'order_number': f"SUPPORT-{session_id[:8]}",
+                'order_id': str(uuid.uuid4()),
+                'order_number': temp_order_number,
                 'tier': tier,
                 'config_id': config_id,
                 'ip_address': ip_address,
@@ -510,6 +508,9 @@ def payment_success():
             session['purchase_config'] = config_id
             session['purchase_ip'] = ip_address
             session['purchase_vps'] = vps_name
+            
+            # Log this for manual recovery
+            logger.error(f"MANUAL RECOVERY NEEDED: Stripe session {session_id}, generated order {temp_order_number}, config {config_id}")
         
         return render_template('payment_success.html', 
                              order_data=order_data, 
@@ -716,40 +717,47 @@ def check_order():
 @app.route('/admin')
 @admin_required
 def admin():
-    """Main admin panel with real database data"""
-    db.cleanup_expired_orders()
-    
-    # Get current orders from database
-    orders = db.get_all_orders()
-    
-    # Convert to dict format for template compatibility
-    orders_dict = {order['order_id']: order for order in orders}
-    
-    # Get availability statistics
-    availability_stats = {}
-    for tier_name in SERVICE_TIERS.keys():
-        available_configs = get_available_config_files(tier_name)
-        availability_stats[tier_name] = {
-            'available': len(available_configs),
-            'capacity': SERVICE_TIERS[tier_name]['capacity']
+    """Main admin panel with real database data - FIXED VERSION"""
+    try:
+        db.cleanup_expired_orders()
+        
+        # Get current orders from database
+        orders = db.get_all_orders()
+        
+        # Convert to dict format for template compatibility - with better error handling
+        orders_dict = {}
+        for order in orders:
+            if order and order.get('order_id'):
+                orders_dict[order['order_id']] = order
+        
+        # Get availability statistics
+        availability_stats = {}
+        for tier_name in SERVICE_TIERS.keys():
+            available_configs = get_available_config_files(tier_name)
+            availability_stats[tier_name] = {
+                'available': len(available_configs),
+                'capacity': SERVICE_TIERS[tier_name]['capacity']
+            }
+        
+        vps_report = {
+            'vps_status': {VPS_NAME: {
+                'status': 'healthy',
+                'ip': VPS_IP,
+                'tiers': availability_stats
+            }},
+            'summary': {
+                'total_vps': 1,
+                'config_files_total': sum(len(get_available_config_files(tier)) for tier in SERVICE_TIERS.keys())
+            }
         }
-    
-    vps_report = {
-        'vps_status': {VPS_NAME: {
-            'status': 'healthy',
-            'ip': VPS_IP,
-            'tiers': availability_stats
-        }},
-        'summary': {
-            'total_vps': 1,
-            'config_files_total': sum(len(get_available_config_files(tier)) for tier in SERVICE_TIERS.keys())
-        }
-    }
-    
-    return render_template('admin.html', 
-                         vps_report=vps_report,
-                         service_tiers=SERVICE_TIERS,
-                         orders=orders_dict)
+        
+        return render_template('admin.html', 
+                             vps_report=vps_report,
+                             service_tiers=SERVICE_TIERS,
+                             orders=orders_dict)
+    except Exception as e:
+        logger.error(f"❌ Admin panel error: {e}")
+        return f"Admin panel error: {str(e)}", 500
 
 @app.route('/admin/force-cleanup', methods=['POST'])
 @admin_required
@@ -881,6 +889,63 @@ def db_status():
             'database_mode': db.mode if db else 'unknown'
         }), 500
 
+@app.route('/api/debug-test-vpn')
+def debug_test_vpn():
+    """Debug why test VPN is failing"""
+    fp = get_client_fingerprint(request)
+    
+    # Check database directly
+    debug_info = {
+        'fingerprint': fp,
+        'database_mode': db.mode,
+        'can_test_result': db.check_daily_limit(fp, 'test')
+    }
+    
+    if db.mode == 'postgresql':
+        try:
+            conn = db.get_connection()
+            cursor = conn.cursor()
+            
+            # Check daily limits table
+            cursor.execute("""
+                SELECT fingerprint, date, test_count, last_test_at
+                FROM daily_limits 
+                WHERE fingerprint = %s AND date = CURRENT_DATE
+            """, (fp,))
+            
+            result = cursor.fetchone()
+            if result:
+                debug_info['daily_limit_record'] = {
+                    'fingerprint': result[0],
+                    'date': str(result[1]),
+                    'test_count': result[2],
+                    'last_test_at': str(result[3]) if result[3] else None
+                }
+            else:
+                debug_info['daily_limit_record'] = 'No record found'
+            
+            # Count total records for this fingerprint
+            cursor.execute("""
+                SELECT COUNT(*) FROM daily_limits WHERE fingerprint = %s
+            """, (fp,))
+            debug_info['total_records_for_fingerprint'] = cursor.fetchone()[0]
+            
+            # Check table structure
+            cursor.execute("""
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = 'daily_limits'
+                ORDER BY ordinal_position;
+            """)
+            debug_info['table_structure'] = [f"{col[0]}:{col[1]}" for col in cursor.fetchall()]
+            
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            debug_info['database_error'] = str(e)
+    
+    return jsonify(debug_info)
+
 # === API ENDPOINTS ===
 
 @app.route('/api/status')
@@ -992,6 +1057,7 @@ if __name__ == '__main__':
     logger.info("📍 Debug endpoints available:")
     logger.info("   - /api/debug-fingerprint - Check IP fingerprinting")
     logger.info("   - /api/db-status - Check database status")
+    logger.info("   - /api/debug-test-vpn - Debug test VPN issues")
     logger.info("   - /api/health - Full health check")
     logger.info("   - /api/status - Service status")
     
