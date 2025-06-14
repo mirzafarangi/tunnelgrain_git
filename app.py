@@ -231,22 +231,16 @@ def order_lookup():
 
 @app.route('/get-test-vpn', methods=['POST'])
 def get_test_vpn():
-    """Assign a 15-minute test VPN with proper database tracking and real expiration"""
+    """Assign a 15-minute test VPN - NO DAILY LIMITS"""
     try:
         # Clean up expired orders first
         db.cleanup_expired_orders()
         
-        # Get user fingerprint
+        # Get user fingerprint (for logging only)
         user_fingerprint = get_client_fingerprint(request)
         logger.info(f"Test VPN request from fingerprint: {user_fingerprint}")
         
-        # Check if user can get a test VPN
-        can_test = db.check_daily_limit(user_fingerprint, 'test')
-        if not can_test:
-            return jsonify({
-                'error': 'You have reached the daily limit of 3 test VPNs. Please try again tomorrow or purchase a paid plan.',
-                'suggestion': 'Each device/network can request up to 3 test VPNs per day.'
-            }), 429
+        # REMOVED: Daily limit check - everyone can test unlimited
         
         # Get available config
         available_configs = get_available_config_files('test')
@@ -258,34 +252,11 @@ def get_test_vpn():
                 'suggestion': 'All test configurations are currently in use.'
             }), 503
         
-        # Get already used configs for this fingerprint today
-        used_configs = []
-        if db.mode == 'postgresql':
-            try:
-                conn = db.get_connection()
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT config_id FROM vpn_orders 
-                    WHERE user_fingerprint = %s 
-                    AND tier = 'test' 
-                    AND created_at::date = CURRENT_DATE
-                """, (user_fingerprint,))
-                used_configs = [row[0] for row in cursor.fetchall()]
-                cursor.close()
-                conn.close()
-            except Exception as e:
-                logger.error(f"Error getting used configs: {e}")
-        
-        # Try to get an unused config
-        unused_configs = [c for c in available_configs if c not in used_configs]
-        if unused_configs:
-            config_id = random.choice(unused_configs)
-        else:
-            config_id = random.choice(available_configs)
-        
+        # Just pick a random config
+        config_id = random.choice(available_configs)
         logger.info(f"Selected config: {config_id}")
         
-        # Create order in database with VPS timer
+        # Create order in database
         order_id, order_number = db.create_order(
             tier='test',
             config_id=config_id,
@@ -293,11 +264,11 @@ def get_test_vpn():
         )
         
         if not order_id:
-            logger.error(f"Failed to create test order for {user_fingerprint}")
+            logger.error(f"Failed to create test order")
             return jsonify({
-                'error': 'Failed to create test order. You may have exceeded the daily limit (3 tests per day).',
-                'suggestion': 'Please try again tomorrow or purchase a paid plan.'
-            }), 429
+                'error': 'Failed to create test order. Please try again.',
+                'suggestion': 'Database error occurred.'
+            }), 500
         
         # Store in session for download
         session['test_slot'] = order_id
@@ -318,10 +289,10 @@ def get_test_vpn():
         })
         
     except Exception as e:
-        logger.error(f"❌ Test VPN error: {e}")
+        logger.error(f"❌ Test VPN error: {e}", exc_info=True)
         return jsonify({
             'error': 'Service temporarily unavailable. Please try again.',
-            'technical_details': str(e) if app.debug else None
+            'technical_details': str(e)
         }), 500
 
 @app.route('/create-checkout-session', methods=['POST'])
@@ -717,18 +688,23 @@ def check_order():
 @app.route('/admin')
 @admin_required
 def admin():
-    """Main admin panel with real database data - FIXED VERSION"""
+    """Main admin panel with real database data - FIXED DATETIME ISSUE"""
     try:
         db.cleanup_expired_orders()
         
         # Get current orders from database
         orders = db.get_all_orders()
         
-        # Convert to dict format for template compatibility - with better error handling
+        # Convert to dict format - fix datetime serialization
         orders_dict = {}
         for order in orders:
             if order and order.get('order_id'):
-                orders_dict[order['order_id']] = order
+                # Convert datetime objects to strings
+                order_copy = order.copy()
+                for key, value in order_copy.items():
+                    if isinstance(value, datetime):
+                        order_copy[key] = value.isoformat()
+                orders_dict[order['order_id']] = order_copy
         
         # Get availability statistics
         availability_stats = {}
@@ -756,7 +732,7 @@ def admin():
                              service_tiers=SERVICE_TIERS,
                              orders=orders_dict)
     except Exception as e:
-        logger.error(f"❌ Admin panel error: {e}")
+        logger.error(f"❌ Admin panel error: {e}", exc_info=True)
         return f"Admin panel error: {str(e)}", 500
 
 @app.route('/admin/force-cleanup', methods=['POST'])

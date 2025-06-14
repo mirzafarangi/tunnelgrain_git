@@ -112,70 +112,8 @@ class TunnelgrainDB:
                 json.dump({'orders': {}, 'daily_limits': {}}, f)
     
     def check_daily_limit(self, user_fingerprint, tier='test'):
-        """Check if user has exceeded daily limits - FIXED VERSION"""
-        if tier != 'test':
-            return True  # No limits for paid tiers
-        
-        if not user_fingerprint:
-            logger.warning("No fingerprint provided for daily limit check")
-            return False  # Deny if no fingerprint for test
-        
-        today = datetime.now().date()
-        
-        if self.mode == 'postgresql':
-            try:
-                conn = self.get_connection()
-                cursor = conn.cursor()
-                
-                # First, clean up old records (older than 7 days)
-                cursor.execute("""
-                    DELETE FROM daily_limits 
-                    WHERE date < CURRENT_DATE - INTERVAL '7 days'
-                """)
-                
-                # Check if record exists for today
-                cursor.execute("""
-                    SELECT test_count FROM daily_limits 
-                    WHERE fingerprint = %s AND date = %s
-                """, (user_fingerprint, today))
-                
-                result = cursor.fetchone()
-                
-                if result is None:
-                    # No record exists, user can test
-                    current_count = 0
-                else:
-                    current_count = result[0] if result[0] is not None else 0
-                
-                conn.commit()
-                cursor.close()
-                conn.close()
-                
-                can_test = current_count < 3
-                logger.info(f"Daily limit check for {user_fingerprint[:8]}...: {current_count}/3 tests used today, can_test={can_test}")
-                return can_test
-                
-            except Exception as e:
-                logger.error(f"❌ Error checking daily limit: {e}")
-                # On database error, allow the test to prevent blocking users
-                return True
-        else:
-            # JSON mode
-            try:
-                with open(self.json_file, 'r') as f:
-                    data = json.load(f)
-                
-                limits = data.get('daily_limits', {})
-                today_key = today.isoformat()
-                
-                if user_fingerprint not in limits:
-                    return True  # No record, can test
-                
-                current_count = limits[user_fingerprint].get(today_key, 0)
-                return current_count < 3
-            except Exception as e:
-                logger.error(f"❌ JSON daily limit check error: {e}")
-                return True  # Allow on error
+        """DISABLED - Always returns True"""
+        return True
     
     def increment_daily_limit(self, user_fingerprint):
         """Increment daily test count"""
@@ -237,15 +175,11 @@ class TunnelgrainDB:
                 logger.error(f"❌ JSON increment error: {e}")
     
     def create_order(self, tier, config_id, user_fingerprint=None, 
-                    vps_name='vps_1', vps_ip='213.170.133.116', 
-                    stripe_session_id=None):
-        """Create new VPN order with VPS timer integration"""
+                vps_name='vps_1', vps_ip='213.170.133.116', 
+                stripe_session_id=None):
+        """Create new VPN order - DAILY LIMITS DISABLED"""
         try:
-            # Check daily limits for test tier
-            if tier == 'test' and user_fingerprint:
-                if not self.check_daily_limit(user_fingerprint, tier):
-                    logger.warning(f"Daily limit exceeded for {user_fingerprint}")
-                    return None, None
+            # REMOVED: Daily limit check - everyone can test unlimited times
             
             order_id = str(uuid.uuid4())
             
@@ -281,10 +215,10 @@ class TunnelgrainDB:
                 cursor.execute("""
                     INSERT INTO vpn_orders 
                     (order_id, order_number, tier, vps_name, vps_ip, config_id, 
-                     price_cents, stripe_session_id, user_fingerprint, expires_at, timer_started)
+                    price_cents, stripe_session_id, user_fingerprint, expires_at, timer_started)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (order_id, order_number, tier, vps_name, vps_ip, config_id,
-                      price_cents, stripe_session_id, user_fingerprint, expires_at, False))
+                    price_cents, stripe_session_id, user_fingerprint, expires_at, False))
                 
                 conn.commit()
                 cursor.close()
@@ -314,9 +248,7 @@ class TunnelgrainDB:
                 with open(self.json_file, 'w') as f:
                     json.dump(data, f)
             
-            # Increment daily limit for test orders AFTER successful creation
-            if tier == 'test' and user_fingerprint:
-                self.increment_daily_limit(user_fingerprint)
+            # REMOVED: Daily limit increment
             
             # Try to start VPS timer but don't fail the order if it doesn't work
             try:
@@ -328,11 +260,13 @@ class TunnelgrainDB:
             except Exception as e:
                 logger.warning(f"⚠️ VPS timer error (order still valid): {e}")
             
+            logger.info(f"✅ Order successfully created: {order_number}")
             return order_id, order_number
             
         except Exception as e:
             logger.error(f"❌ Error creating order: {e}")
             return None, None
+
     
     def start_vps_timer(self, order_number, tier, duration_minutes, config_id, vps_name='vps_1'):
         """Start expiration timer on VPS - non-critical operation"""
