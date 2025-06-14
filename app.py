@@ -6,11 +6,9 @@ import stripe
 import uuid
 import hashlib
 from functools import wraps
-from collections import defaultdict
-from database_manager import TunnelgrainDB
 import glob
 import random
-import requests
+from database_manager import TunnelgrainDB
 
 # Configure logging
 logging.basicConfig(
@@ -23,19 +21,25 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-in-production-very-secret-key')
 
 # Initialize database
-db = TunnelgrainDB()
+try:
+    db = TunnelgrainDB()
+    logger.info("✅ Database initialized successfully")
+except Exception as e:
+    logger.error(f"❌ Database initialization failed: {e}")
+    raise
 
 # Stripe Configuration
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 
 if not STRIPE_PUBLISHABLE_KEY or not STRIPE_SECRET_KEY:
-    logger.warning("⚠️ Stripe keys not configured - payments will not work")
+    logger.error("❌ Stripe keys not configured - payments will not work")
+    raise ValueError("Stripe keys are required")
 else:
     stripe.api_key = STRIPE_SECRET_KEY
     logger.info("✅ Stripe configured successfully")
 
-# Admin security key from environment
+# Admin security key
 ADMIN_KEY = os.environ.get('ADMIN_KEY', 'Freud@')
 
 # VPS Configuration
@@ -43,7 +47,7 @@ VPS_IP = "213.170.133.116"
 VPS_ENDPOINT = os.environ.get('VPS_1_ENDPOINT', f'http://{VPS_IP}:8080')
 VPS_NAME = "primary_vps"
 
-# Local file paths
+# Local file paths (for serving configs/QR codes)
 DATA_DIR = "data/vps_1/ip_213.170.133.116"
 QR_DIR = "static/qr_codes/vps_1/ip_213.170.133.116"
 
@@ -99,9 +103,6 @@ SERVICE_TIERS = {
     }
 }
 
-# Abuse Prevention - In-memory tracking
-test_usage_tracker = defaultdict(list)
-
 # Admin authentication decorator
 def admin_required(f):
     @wraps(f)
@@ -120,29 +121,6 @@ def get_client_fingerprint(request):
     user_agent = request.headers.get('User-Agent', '')
     fingerprint_data = f"{ip}:{user_agent}"
     return hashlib.sha256(fingerprint_data.encode()).hexdigest()[:16]
-
-def check_test_vpn_abuse(request):
-    """Check if user has exceeded test VPN limits (3 per 24 hours)"""
-    fingerprint = get_client_fingerprint(request)
-    now = datetime.now()
-    
-    # Clean old entries (older than 24 hours)
-    cutoff_time = now - timedelta(hours=24)
-    test_usage_tracker[fingerprint] = [
-        timestamp for timestamp in test_usage_tracker[fingerprint] 
-        if timestamp > cutoff_time
-    ]
-    
-    usage_count = len(test_usage_tracker[fingerprint])
-    
-    # Limit: 3 test VPNs per 24 hours per fingerprint
-    if usage_count >= 3:
-        return False, f"Test limit reached. You can try {3 - usage_count} more test VPNs today."
-    
-    # Record this usage
-    test_usage_tracker[fingerprint].append(now)
-    
-    return True, f"Test VPN granted. {3 - len(test_usage_tracker[fingerprint])} remaining today."
 
 def get_available_config_files(tier: str):
     """Get list of available config files for a tier"""
@@ -225,63 +203,62 @@ def order_lookup():
 
 @app.route('/get-test-vpn', methods=['POST'])
 def get_test_vpn():
-    """Assign a 15-minute test VPN with abuse prevention and real expiration"""
-    # Clean up expired orders first
-    db.cleanup_expired_orders()
-    
-    # Check for abuse
-    allowed, message = check_test_vpn_abuse(request)
-    if not allowed:
+    """Assign a 15-minute test VPN with proper database tracking and real expiration"""
+    try:
+        # Clean up expired orders first
+        db.cleanup_expired_orders()
+        
+        # Get available config
+        config_id = get_random_config_id('test')
+        if not config_id:
+            return jsonify({
+                'error': 'No test slots available. Please try again later or purchase a paid plan.',
+                'suggestion': 'All test configurations are currently in use.'
+            }), 503
+        
+        user_fingerprint = get_client_fingerprint(request)
+        
+        # Create order in database with VPS timer
+        order_id, order_number = db.create_order(
+            tier='test',
+            config_id=config_id,
+            user_fingerprint=user_fingerprint
+        )
+        
+        if not order_id:
+            return jsonify({
+                'error': 'Failed to create test order. You may have exceeded the daily limit (3 tests per day).',
+                'suggestion': 'Please try again tomorrow or purchase a paid plan.'
+            }), 429
+        
+        # Store in session for download
+        session['test_slot'] = order_id
+        session['test_order'] = order_number
+        session['test_config'] = config_id
+        session['test_expires'] = (datetime.now() + timedelta(minutes=15)).isoformat()
+        
+        logger.info(f"✅ Test VPN assigned: {order_number} (config: {config_id})")
+        
         return jsonify({
-            'error': 'Test limit exceeded. You can try 3 test VPNs per day. For unlimited access, please purchase a VPN plan.',
-            'limit_info': message
-        }), 429
-    
-    # Get available config
-    config_id = get_random_config_id('test')
-    if not config_id:
+            'success': True,
+            'order_id': order_id,
+            'order_number': order_number,
+            'config_id': config_id,
+            'expires_in_minutes': 15,
+            'download_url': url_for('download_test_config'),
+            'message': 'Test VPN assigned successfully. Config will expire in 15 minutes.'
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Test VPN error: {e}")
         return jsonify({
-            'error': 'No test slots available. Please try again later or purchase a paid plan.',
-            'suggestion': 'All test configurations are currently in use.'
-        }), 503
-    
-    user_fingerprint = get_client_fingerprint(request)
-    
-    # Create order in database with VPS timer
-    order_id, order_number = db.create_order(
-        tier='test',
-        config_id=config_id,
-        vps_ip=VPS_IP,
-        user_fingerprint=user_fingerprint
-    )
-    
-    if not order_id:
-        return jsonify({
-            'error': 'Failed to create test order',
-            'suggestion': 'Please try again or contact support'
+            'error': 'Service temporarily unavailable. Please try again.',
+            'technical_details': str(e) if app.debug else None
         }), 500
-    
-    # Store in session for download
-    session['test_slot'] = order_id
-    session['test_order'] = order_number
-    session['test_config'] = config_id
-    session['test_expires'] = (datetime.now() + timedelta(minutes=15)).isoformat()
-    
-    logger.info(f"[TEST] User {user_fingerprint} assigned config {config_id} (order {order_number})")
-    
-    return jsonify({
-        'success': True,
-        'order_id': order_id,
-        'order_number': order_number,
-        'config_id': config_id,
-        'expires_in_minutes': 15,
-        'download_url': url_for('download_test_config'),
-        'usage_info': message
-    })
 
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
-    """Create Stripe checkout session for VPN purchase"""
+    """Create Stripe checkout session for VPN purchase with proper error handling"""
     try:
         data = request.json
         tier = data.get('tier')
@@ -294,74 +271,119 @@ def create_checkout_session():
         # Check availability
         config_id = get_random_config_id(tier)
         if not config_id:
-            return jsonify({'error': f'No {tier} slots available. Please try again later or choose a different plan.'}), 503
+            return jsonify({
+                'error': f'No {tier} slots available. Please try again later or choose a different plan.',
+                'suggestion': 'All configurations for this tier are currently in use.'
+            }), 503
         
         tier_config = SERVICE_TIERS[tier]
         
-        # Create Stripe checkout session
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {
-                        'name': f"Tunnelgrain {tier_config['name']}",
-                        'description': f"{tier_config['description']} on IP {ip_address}"
+        # Create Stripe checkout session with proper error handling
+        try:
+            checkout_session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {
+                            'name': f"Tunnelgrain {tier_config['name']}",
+                            'description': f"{tier_config['description']} on IP {ip_address}",
+                            'images': []  # Add your logo URL here if you have one
+                        },
+                        'unit_amount': tier_config['price_cents'],
                     },
-                    'unit_amount': tier_config['price_cents'],
+                    'quantity': 1,
+                }],
+                mode='payment',
+                success_url=url_for('payment_success', _external=True) + '?session_id={CHECKOUT_SESSION_ID}',
+                cancel_url=url_for('order', _external=True),
+                metadata={
+                    'tier': tier,
+                    'config_id': config_id,
+                    'ip_address': ip_address,
+                    'vps_name': VPS_NAME
                 },
-                'quantity': 1,
-            }],
-            mode='payment',
-            success_url=url_for('payment_success', _external=True) + '?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url=url_for('order', _external=True),
-            metadata={
-                'tier': tier,
-                'config_id': config_id,
-                'ip_address': ip_address,
-                'vps_name': VPS_NAME
-            }
-        )
+                billing_address_collection='auto',
+                phone_number_collection={'enabled': False},
+                customer_creation='if_required'
+            )
+            
+            logger.info(f"✅ Stripe session created: {checkout_session.id} for tier {tier}")
+            
+            return jsonify({
+                'checkout_url': checkout_session.url,
+                'session_id': checkout_session.id
+            })
+            
+        except stripe.error.CardError as e:
+            logger.error(f"❌ Stripe card error: {e}")
+            return jsonify({'error': 'Card was declined. Please try a different payment method.'}), 400
         
-        return jsonify({'checkout_url': checkout_session.url})
+        except stripe.error.RateLimitError as e:
+            logger.error(f"❌ Stripe rate limit: {e}")
+            return jsonify({'error': 'Too many requests. Please try again in a moment.'}), 429
+        
+        except stripe.error.InvalidRequestError as e:
+            logger.error(f"❌ Stripe invalid request: {e}")
+            return jsonify({'error': 'Invalid payment request. Please try again.'}), 400
+        
+        except stripe.error.AuthenticationError as e:
+            logger.error(f"❌ Stripe authentication error: {e}")
+            return jsonify({'error': 'Payment system configuration error. Please contact support.'}), 500
+        
+        except stripe.error.APIConnectionError as e:
+            logger.error(f"❌ Stripe connection error: {e}")
+            return jsonify({'error': 'Unable to connect to payment system. Please try again.'}), 503
+        
+        except stripe.error.StripeError as e:
+            logger.error(f"❌ Generic Stripe error: {e}")
+            return jsonify({'error': 'Payment system temporarily unavailable. Please try again.'}), 500
     
-    except stripe.error.StripeError as e:
-        logger.error(f"[STRIPE] Error creating session: {e}")
-        return jsonify({'error': 'Payment system temporarily unavailable. Please try again.'}), 500
     except Exception as e:
-        logger.error(f"[CHECKOUT] Error creating session: {e}")
-        return jsonify({'error': 'Payment system temporarily unavailable'}), 500
+        logger.error(f"❌ Checkout session creation error: {e}")
+        return jsonify({
+            'error': 'Service temporarily unavailable. Please try again.',
+            'technical_details': str(e) if app.debug else None
+        }), 500
 
 @app.route('/payment-success')
 def payment_success():
-    """Handle successful payment"""
+    """Handle successful payment with proper validation"""
     session_id = request.args.get('session_id')
     
     if not session_id:
+        logger.error("❌ Payment success called without session_id")
         return "Invalid payment session", 400
     
     try:
-        # Retrieve the session from Stripe
-        checkout_session = stripe.checkout.Session.retrieve(session_id)
+        # Retrieve the session from Stripe with expanded data
+        checkout_session = stripe.checkout.Session.retrieve(
+            session_id,
+            expand=['customer', 'payment_intent']
+        )
         
         if checkout_session.payment_status != 'paid':
-            return "Payment not completed", 400
+            logger.error(f"❌ Payment not completed for session {session_id}: {checkout_session.payment_status}")
+            return f"Payment not completed. Status: {checkout_session.payment_status}", 400
         
         # Extract metadata
         metadata = checkout_session.metadata
         tier = metadata.get('tier')
         config_id = metadata.get('config_id')
-        ip_address = metadata.get('ip_address')
-        vps_name = metadata.get('vps_name')
+        ip_address = metadata.get('ip_address', VPS_IP)
+        vps_name = metadata.get('vps_name', VPS_NAME)
+        
+        if not all([tier, config_id]):
+            logger.error(f"❌ Missing metadata in session {session_id}")
+            return "Invalid payment data", 400
         
         # Create order with VPS timer
         user_fingerprint = get_client_fingerprint(request)
         order_id, order_number = db.create_order(
             tier=tier,
             config_id=config_id,
-            vps_ip=ip_address,
-            stripe_session_id=session_id,
-            user_fingerprint=user_fingerprint
+            user_fingerprint=user_fingerprint,
+            stripe_session_id=session_id
         )
         
         if order_id:
@@ -381,20 +403,20 @@ def payment_success():
                 'vps_name': vps_name
             }
             
-            logger.info(f"[PAYMENT] New assignment: {order_number}, tier: {tier}, config: {config_id}")
+            logger.info(f"✅ Payment successful: {order_number}, tier: {tier}, config: {config_id}")
             
             return render_template('payment_success.html', 
                                  order_data=order_data, 
                                  tier_config=SERVICE_TIERS[tier])
         else:
-            logger.error(f"[PAYMENT] Failed to create order for session {session_id}")
-            return "Order creation failed - contact support", 500
+            logger.error(f"❌ Failed to create order for paid session {session_id}")
+            return "Order creation failed - please contact support with your payment confirmation", 500
             
     except stripe.error.StripeError as e:
-        logger.error(f"[PAYMENT] Stripe error processing payment: {e}")
+        logger.error(f"❌ Stripe error during payment success: {e}")
         return f"Payment verification failed: {str(e)}", 500
     except Exception as e:
-        logger.error(f"[PAYMENT] Error processing payment: {e}")
+        logger.error(f"❌ Payment success processing error: {e}")
         return f"Error processing payment: {str(e)}", 500
 
 # === DOWNLOAD ROUTES ===
@@ -412,10 +434,11 @@ def download_test_config():
     config_path = os.path.join(DATA_DIR, 'test', f"{config_id}.conf")
     
     if not os.path.exists(config_path):
-        logger.error(f"Test config file not found: {config_path}")
+        logger.error(f"❌ Test config file not found: {config_path}")
         return "Config file not found. Please contact support.", 404
     
     try:
+        logger.info(f"✅ Serving test config: {order_number} ({config_id})")
         return send_file(
             config_path,
             as_attachment=True,
@@ -423,7 +446,7 @@ def download_test_config():
             mimetype='application/octet-stream'
         )
     except Exception as e:
-        logger.error(f"Error serving test config: {e}")
+        logger.error(f"❌ Error serving test config: {e}")
         return "Error serving config file. Please contact support.", 500
 
 @app.route('/download-test-qr')
@@ -439,10 +462,11 @@ def download_test_qr():
     qr_path = os.path.join(QR_DIR, 'test', f"{config_id}.png")
     
     if not os.path.exists(qr_path):
-        logger.error(f"Test QR file not found: {qr_path}")
+        logger.error(f"❌ Test QR file not found: {qr_path}")
         return "QR code not found. Please contact support.", 404
     
     try:
+        logger.info(f"✅ Serving test QR: {order_number} ({config_id})")
         return send_file(
             qr_path,
             as_attachment=True,
@@ -450,7 +474,7 @@ def download_test_qr():
             mimetype='image/png'
         )
     except Exception as e:
-        logger.error(f"Error serving test QR: {e}")
+        logger.error(f"❌ Error serving test QR: {e}")
         return "Error serving QR code. Please contact support.", 500
 
 @app.route('/download-purchase-config')
@@ -467,10 +491,11 @@ def download_purchase_config():
     config_path = os.path.join(DATA_DIR, tier, f"{config_id}.conf")
     
     if not os.path.exists(config_path):
-        logger.error(f"Purchase config file not found: {config_path}")
+        logger.error(f"❌ Purchase config file not found: {config_path}")
         return "Config file not found. Please contact support.", 404
     
     try:
+        logger.info(f"✅ Serving purchase config: {order_number} ({tier}/{config_id})")
         return send_file(
             config_path,
             as_attachment=True,
@@ -478,7 +503,7 @@ def download_purchase_config():
             mimetype='application/octet-stream'
         )
     except Exception as e:
-        logger.error(f"Error serving purchase config: {e}")
+        logger.error(f"❌ Error serving purchase config: {e}")
         return "Error serving config file. Please contact support.", 500
 
 @app.route('/download-purchase-qr')
@@ -495,10 +520,11 @@ def download_purchase_qr():
     qr_path = os.path.join(QR_DIR, tier, f"{config_id}.png")
     
     if not os.path.exists(qr_path):
-        logger.error(f"Purchase QR file not found: {qr_path}")
+        logger.error(f"❌ Purchase QR file not found: {qr_path}")
         return "QR code not found. Please contact support.", 404
     
     try:
+        logger.info(f"✅ Serving purchase QR: {order_number} ({tier}/{config_id})")
         return send_file(
             qr_path,
             as_attachment=True,
@@ -506,7 +532,7 @@ def download_purchase_qr():
             mimetype='image/png'
         )
     except Exception as e:
-        logger.error(f"Error serving purchase QR: {e}")
+        logger.error(f"❌ Error serving purchase QR: {e}")
         return "Error serving QR code. Please contact support.", 500
 
 # === ORDER LOOKUP ===
@@ -536,9 +562,9 @@ def check_order():
     status = 'unknown'
     time_remaining = 'unknown'
     
-    if order_data.get('expires_at'):
+    expires_at = order_data.get('expires_at')
+    if expires_at:
         try:
-            expires_at = order_data['expires_at']
             if isinstance(expires_at, str):
                 expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
             
@@ -561,7 +587,8 @@ def check_order():
             else:
                 status = 'expired'
                 time_remaining = 'Expired'
-        except:
+        except Exception as e:
+            logger.error(f"❌ Error calculating time remaining: {e}")
             status = 'unknown'
             time_remaining = 'Unknown'
     
@@ -574,9 +601,10 @@ def check_order():
         'tier_name': tier_info.get('name', 'Unknown'),
         'status': status,
         'time_remaining': time_remaining,
-        'assigned_at': order_data.get('assigned_at', 'unknown'),
-        'ip_address': order_data.get('ip_address', 'unknown'),
-        'config_id': order_data.get('config_id', 'unknown')
+        'assigned_at': order_data.get('created_at', 'unknown'),
+        'ip_address': order_data.get('vps_ip', 'unknown'),
+        'config_id': order_data.get('config_id', 'unknown'),
+        'timer_started': order_data.get('timer_started', False)
     })
 
 # === ADMIN ROUTES ===
@@ -584,11 +612,14 @@ def check_order():
 @app.route('/admin')
 @admin_required
 def admin():
-    """Main admin panel"""
+    """Main admin panel with real database data"""
     db.cleanup_expired_orders()
     
     # Get current orders from database
     orders = db.get_all_orders()
+    
+    # Convert to dict format for template compatibility
+    orders_dict = {order['order_id']: order for order in orders}
     
     # Get availability statistics
     availability_stats = {}
@@ -614,36 +645,7 @@ def admin():
     return render_template('admin.html', 
                          vps_report=vps_report,
                          service_tiers=SERVICE_TIERS,
-                         orders=orders)
-
-@app.route('/admin/servers')
-@admin_required
-def admin_servers():
-    """VPS health monitoring dashboard"""
-    # Get availability statistics
-    availability_stats = {}
-    for tier_name in SERVICE_TIERS.keys():
-        available_configs = get_available_config_files(tier_name)
-        availability_stats[tier_name] = {
-            'available': len(available_configs),
-            'capacity': SERVICE_TIERS[tier_name]['capacity']
-        }
-    
-    vps_report = {
-        'vps_status': {VPS_NAME: {
-            'status': 'healthy',
-            'server_ip': VPS_IP,
-            'tiers': availability_stats,
-            'timestamp': datetime.now().isoformat()
-        }},
-        'summary': {
-            'total_vps': 1,
-            'revenue_potential': sum(tier['price_cents'] * tier['capacity'] 
-                                   for tier in SERVICE_TIERS.values() if tier['price_cents'] > 0)
-        },
-        'timestamp': datetime.now().isoformat()
-    }
-    return render_template('admin_servers.html', vps_report=vps_report)
+                         orders=orders_dict)
 
 @app.route('/admin/force-cleanup', methods=['POST'])
 @admin_required
@@ -659,7 +661,7 @@ def admin_force_cleanup():
         })
         
     except Exception as e:
-        logger.error(f"[ADMIN] Force cleanup error: {e}")
+        logger.error(f"❌ Admin force cleanup error: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -687,11 +689,12 @@ def api_status():
             'tiers': tier_availability,
             'vps_count': 1,
             'vps_ip': VPS_IP,
-            'database_type': 'PostgreSQL'
+            'database_type': 'PostgreSQL',
+            'vps_endpoint': VPS_ENDPOINT
         })
         
     except Exception as e:
-        logger.error(f"[API] Status error: {e}")
+        logger.error(f"❌ API status error: {e}")
         return jsonify({
             'status': 'error',
             'error': str(e)
@@ -700,20 +703,30 @@ def api_status():
 @app.route('/api/health')
 def api_health():
     """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'service': 'tunnelgrain-enhanced',
-        'version': '4.0.0',
-        'timestamp': datetime.now().isoformat(),
-        'admin_key_configured': bool(ADMIN_KEY),
-        'stripe_configured': bool(STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY),
-        'database_configured': db.database_url is not None,
-        'vps_endpoint': VPS_ENDPOINT,
-        'local_files': {
-            'data_dir_exists': os.path.exists(DATA_DIR),
-            'qr_dir_exists': os.path.exists(QR_DIR)
-        }
-    })
+    try:
+        db_health = db.health_check()
+        
+        return jsonify({
+            'status': 'healthy',
+            'service': 'tunnelgrain-fixed',
+            'version': '4.1.0',
+            'timestamp': datetime.now().isoformat(),
+            'admin_key_configured': bool(ADMIN_KEY),
+            'stripe_configured': bool(STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY),
+            'database': db_health,
+            'vps_endpoint': VPS_ENDPOINT,
+            'local_files': {
+                'data_dir_exists': os.path.exists(DATA_DIR),
+                'qr_dir_exists': os.path.exists(QR_DIR)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Health check error: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
 
 # === ERROR HANDLERS ===
 
@@ -723,30 +736,14 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    logger.error(f"Internal error: {error}")
+    logger.error(f"❌ Internal error: {error}")
     return render_template('500.html'), 500
 
 if __name__ == '__main__':
-    # Create directories if they don't exist
-    os.makedirs('templates', exist_ok=True)
-    os.makedirs('static', exist_ok=True)
-    
-    # Verify local file structure
-    if not os.path.exists(DATA_DIR):
-        logger.error(f"❌ Data directory not found: {DATA_DIR}")
-    else:
-        logger.info(f"✅ Data directory found: {DATA_DIR}")
-        
-    if not os.path.exists(QR_DIR):
-        logger.error(f"❌ QR code directory not found: {QR_DIR}")
-    else:
-        logger.info(f"✅ QR code directory found: {QR_DIR}")
-    
-    # Log startup information
+    # Verify setup
     logger.info("🚀 Tunnelgrain VPN Service Starting...")
-    logger.info(f"Admin Key: {'Configured' if ADMIN_KEY else 'Not Set'}")
-    logger.info(f"Stripe: {'Configured' if STRIPE_PUBLISHABLE_KEY else 'Not Configured'}")
-    logger.info(f"Database: {'PostgreSQL' if db.database_url else 'Not Configured'}")
+    logger.info(f"Admin Key: {'✅ Configured' if ADMIN_KEY else '❌ Not Set'}")
+    logger.info(f"Stripe: {'✅ Configured' if STRIPE_PUBLISHABLE_KEY else '❌ Not Configured'}")
     logger.info(f"VPS IP: {VPS_IP}")
     logger.info(f"VPS Endpoint: {VPS_ENDPOINT}")
     logger.info(f"Service Tiers: {list(SERVICE_TIERS.keys())}")
@@ -756,5 +753,16 @@ if __name__ == '__main__':
         available = len(get_available_config_files(tier_name))
         capacity = SERVICE_TIERS[tier_name]['capacity']
         logger.info(f"Tier {tier_name}: {available}/{capacity} configs available")
+    
+    # Verify data directories exist
+    if not os.path.exists(DATA_DIR):
+        logger.error(f"❌ Data directory not found: {DATA_DIR}")
+    else:
+        logger.info(f"✅ Data directory found: {DATA_DIR}")
+        
+    if not os.path.exists(QR_DIR):
+        logger.error(f"❌ QR code directory not found: {QR_DIR}")
+    else:
+        logger.info(f"✅ QR code directory found: {QR_DIR}")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
