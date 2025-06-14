@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Tunnelgrain VPS Expiration Daemon
-Runs on VPS server to enforce config expiration by removing peers from WireGuard
+Tunnelgrain VPS Expiration Daemon v2.0
+Optimized for your existing VPS setup and workflow
 """
 
 import time
@@ -80,8 +80,8 @@ class ExpirationManager:
         except Exception as e:
             logger.error(f"Error saving data: {e}")
     
-    def extract_public_key_from_config(self, config_id, tier):
-        """Extract public key from config file"""
+    def get_client_public_key_from_config(self, config_id, tier):
+        """Extract client's public key from their private key in config file"""
         try:
             config_path = f"{CONFIG_BASE}/configs/{tier}/{config_id}.conf"
             
@@ -89,30 +89,85 @@ class ExpirationManager:
                 logger.error(f"Config file not found: {config_path}")
                 return None
             
-            # Read config and extract PublicKey
+            # Read config and extract PrivateKey
+            private_key = None
             with open(config_path, 'r') as f:
                 for line in f:
-                    if line.strip().startswith('PublicKey'):
-                        # Format: PublicKey = <key>
+                    if line.strip().startswith('PrivateKey'):
+                        # Format: PrivateKey = <key>
                         parts = line.strip().split('=', 1)
                         if len(parts) == 2:
-                            return parts[1].strip()
+                            private_key = parts[1].strip()
+                            break
             
-            logger.error(f"PublicKey not found in {config_path}")
+            if not private_key:
+                logger.error(f"PrivateKey not found in {config_path}")
+                return None
+            
+            # Generate public key from private key using wg command
+            try:
+                result = subprocess.run(
+                    ['wg', 'pubkey'], 
+                    input=private_key, 
+                    text=True, 
+                    capture_output=True,
+                    timeout=5
+                )
+                
+                if result.returncode == 0:
+                    public_key = result.stdout.strip()
+                    logger.info(f"Generated public key for {config_id}: {public_key[:16]}...")
+                    return public_key
+                else:
+                    logger.error(f"Failed to generate public key: {result.stderr}")
+                    return None
+                    
+            except Exception as e:
+                logger.error(f"Error generating public key from private key: {e}")
+                return None
+            
+        except Exception as e:
+            logger.error(f"Error extracting keys from config: {e}")
+            return None
+    
+    def get_public_key_from_wireguard_config(self, config_id):
+        """Alternative method: extract public key from WireGuard server config"""
+        try:
+            # Read WireGuard server config
+            with open('/etc/wireguard/wg0.conf', 'r') as f:
+                content = f.read()
+            
+            # Look for the config_id in comments and get the following PublicKey
+            lines = content.split('\n')
+            for i, line in enumerate(lines):
+                if config_id in line and line.strip().startswith('#'):
+                    # Found the comment with config_id, look for PublicKey in next few lines
+                    for j in range(i+1, min(i+5, len(lines))):
+                        if lines[j].strip().startswith('PublicKey'):
+                            parts = lines[j].strip().split('=', 1)
+                            if len(parts) == 2:
+                                return parts[1].strip()
+            
+            logger.warning(f"Could not find public key for {config_id} in server config")
             return None
             
         except Exception as e:
-            logger.error(f"Error extracting public key: {e}")
+            logger.error(f"Error reading server config: {e}")
             return None
     
     def add_timer(self, order_number, tier, duration_minutes, config_id):
         """Add expiration timer and map to peer"""
         with self.lock:
             try:
-                # Extract public key from config
-                public_key = self.extract_public_key_from_config(config_id, tier)
+                # Try to get public key from client config first
+                public_key = self.get_client_public_key_from_config(config_id, tier)
+                
+                # If that fails, try from server config
                 if not public_key:
-                    logger.error(f"Failed to extract public key for {order_number}")
+                    public_key = self.get_public_key_from_wireguard_config(config_id)
+                
+                if not public_key:
+                    logger.error(f"Failed to extract public key for {order_number} (config: {config_id})")
                     return False
                 
                 # Calculate expiration
@@ -137,7 +192,7 @@ class ExpirationManager:
                 }
                 
                 self.save_data()
-                logger.info(f"⏰ Timer added: {order_number} expires in {duration_minutes} minutes")
+                logger.info(f"⏰ Timer added: {order_number} expires in {duration_minutes} minutes (key: {public_key[:16]}...)")
                 return True
                 
             except Exception as e:
@@ -145,15 +200,26 @@ class ExpirationManager:
                 return False
     
     def remove_peer_from_wireguard(self, public_key):
-        """Actually remove peer from WireGuard interface"""
+        """Remove peer from WireGuard interface"""
         try:
             # Remove peer from WireGuard
             result = subprocess.run([
                 'wg', 'set', 'wg0', 'peer', public_key, 'remove'
-            ], capture_output=True, text=True)
+            ], capture_output=True, text=True, timeout=10)
             
             if result.returncode == 0:
                 logger.info(f"✅ Peer {public_key[:16]}... removed from WireGuard")
+                
+                # Save WireGuard config to persist changes
+                save_result = subprocess.run([
+                    'wg-quick', 'save', 'wg0'
+                ], capture_output=True, text=True, timeout=10)
+                
+                if save_result.returncode == 0:
+                    logger.info(f"✅ WireGuard config saved")
+                else:
+                    logger.warning(f"⚠️ Failed to save WireGuard config: {save_result.stderr}")
+                
                 return True
             else:
                 logger.error(f"❌ Failed to remove peer: {result.stderr}")
@@ -260,18 +326,17 @@ def start_timer():
         order_number = data.get('order_number')
         tier = data.get('tier')
         duration_minutes = data.get('duration_minutes')
+        config_id = data.get('config_id')
         
-        # Extract config_id from order number (last 8 chars of order match config_id)
-        # This assumes config_id is embedded in order_number
-        config_id = data.get('config_id', order_number[-8:])
-        
-        if not all([order_number, tier, duration_minutes]):
+        if not all([order_number, tier, duration_minutes, config_id]):
             return jsonify({'error': 'Missing required fields'}), 400
         
         # Validate duration
         duration_minutes = int(duration_minutes)
         if duration_minutes <= 0:
             return jsonify({'error': 'Invalid duration'}), 400
+        
+        logger.info(f"📝 Timer request: {order_number} (tier: {tier}, config: {config_id}, duration: {duration_minutes}min)")
         
         success = expiration_manager.add_timer(order_number, tier, duration_minutes, config_id)
         
@@ -280,6 +345,7 @@ def start_timer():
                 'success': True,
                 'order_number': order_number,
                 'tier': tier,
+                'config_id': config_id,
                 'duration_minutes': duration_minutes,
                 'message': f'Timer started for {order_number}'
             })
@@ -311,10 +377,12 @@ def check_timer(order_number):
         return jsonify({
             'order_number': order_number,
             'tier': timer_data.get('tier'),
+            'config_id': timer_data.get('config_id'),
             'status': timer_data.get('status', 'expired' if is_expired else 'active'),
             'expires_at': timer_data.get('expires_at'),
             'time_remaining_seconds': time_remaining,
-            'time_remaining_minutes': time_remaining / 60
+            'time_remaining_minutes': time_remaining / 60,
+            'public_key': timer_data.get('public_key', '')[:16] + '...' if timer_data.get('public_key') else 'unknown'
         })
         
     except Exception as e:
@@ -339,6 +407,7 @@ def get_status():
         
         return jsonify({
             'daemon': 'running',
+            'version': '2.0',
             'timestamp': datetime.now().isoformat(),
             'server_ip': '213.170.133.116',
             'timers': status,
@@ -377,8 +446,48 @@ def health():
     """Simple health check"""
     return jsonify({
         'status': 'healthy',
+        'version': '2.0',
         'timestamp': datetime.now().isoformat()
     })
+
+@app.route('/api/list-timers', methods=['GET'])
+def list_timers():
+    """List all active timers"""
+    try:
+        with expiration_manager.lock:
+            timers = []
+            for order_number, timer_data in expiration_manager.active_timers.items():
+                now = datetime.now()
+                try:
+                    expires_at = datetime.fromisoformat(timer_data['expires_at'])
+                    time_remaining = max(0, (expires_at - now).total_seconds())
+                    status = timer_data.get('status', 'expired' if now >= expires_at else 'active')
+                except:
+                    time_remaining = 0
+                    status = 'expired'
+                
+                timers.append({
+                    'order_number': order_number,
+                    'tier': timer_data.get('tier'),
+                    'config_id': timer_data.get('config_id'),
+                    'status': status,
+                    'expires_at': timer_data.get('expires_at'),
+                    'time_remaining_minutes': round(time_remaining / 60, 1),
+                    'added_at': timer_data.get('added_at')
+                })
+            
+            # Sort by expiration time
+            timers.sort(key=lambda x: x.get('expires_at', ''))
+            
+            return jsonify({
+                'timers': timers,
+                'total_count': len(timers),
+                'active_count': len([t for t in timers if t['status'] == 'active'])
+            })
+        
+    except Exception as e:
+        logger.error(f"Error listing timers: {e}")
+        return jsonify({'error': str(e)}), 500
 
 def run_expiration_checker():
     """Background thread for checking expirations"""
@@ -388,7 +497,7 @@ def run_expiration_checker():
         try:
             expired_count = expiration_manager.check_expirations()
             if expired_count > 0:
-                logger.info(f"✅ Processed {expired_count} expirations")
+                logger.info(f"✅ Processed {expired_count} expirations this cycle")
             
             # Check every 30 seconds
             time.sleep(30)
@@ -402,7 +511,7 @@ if __name__ == '__main__':
     checker_thread = threading.Thread(target=run_expiration_checker, daemon=True)
     checker_thread.start()
     
-    logger.info("🚀 Starting Tunnelgrain VPS Expiration Daemon")
+    logger.info("🚀 Starting Tunnelgrain VPS Expiration Daemon v2.0")
     logger.info(f"Config base: {CONFIG_BASE}")
     logger.info(f"Timer file: {TIMER_FILE}")
     logger.info(f"Peer mapping: {PEER_MAP_FILE}")

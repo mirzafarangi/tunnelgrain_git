@@ -276,19 +276,14 @@ class TunnelgrainDB:
             return None, None
     
     def start_vps_timer(self, order_number, tier, duration_minutes, config_id, vps_name='vps_1'):
-        """Start expiration timer on VPS - non-critical operation"""
+        """Start expiration timer on VPS"""
         try:
             vps_endpoint = self.vps_endpoints.get(vps_name)
             if not vps_endpoint:
                 logger.warning(f"No endpoint configured for {vps_name}")
                 return False
             
-            # Skip VPS timer for now if it's causing issues
-            logger.info(f"⚠️ VPS timer skipped for {order_number} - manual expiration will handle cleanup")
-            return False
-            
-            # Original VPS timer code (disabled for now)
-            """
+            # Send timer request to VPS daemon
             response = requests.post(
                 f"{vps_endpoint}/api/start-timer",
                 json={
@@ -297,24 +292,29 @@ class TunnelgrainDB:
                     'duration_minutes': duration_minutes,
                     'config_id': config_id
                 },
-                timeout=2
+                timeout=5  # Increased timeout
             )
             
             if response.status_code == 200:
-                # Update timer_started flag
+                # Update timer_started flag in database
                 if self.mode == 'postgresql':
                     conn = self.get_connection()
                     cursor = conn.cursor()
                     cursor.execute("UPDATE vpn_orders SET timer_started = TRUE WHERE order_number = %s", 
-                                 (order_number,))
+                                (order_number,))
                     conn.commit()
                     cursor.close()
                     conn.close()
                 
                 logger.info(f"✅ VPS timer started for {order_number}")
                 return True
-            """
+            else:
+                logger.error(f"❌ VPS timer failed: {response.status_code} - {response.text}")
+                return False
                 
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ VPS timer connection error: {e}")
+            return False
         except Exception as e:
             logger.error(f"❌ VPS timer error: {e}")
             return False
