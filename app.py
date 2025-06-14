@@ -1,22 +1,16 @@
 from flask import Flask, render_template, request, send_file, jsonify, session, redirect, url_for, abort
-import json
 import os
-import time
+import logging
 from datetime import datetime, timedelta
-import qrcode
-from io import BytesIO
 import stripe
 import uuid
 import hashlib
 from functools import wraps
 from collections import defaultdict
-import logging
-from dotenv import load_dotenv
+from database_manager import TunnelgrainDB
 import glob
 import random
-
-# Load environment variables
-load_dotenv()
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -27,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-in-production-very-secret-key')
+
+# Initialize database
+db = TunnelgrainDB()
 
 # Stripe Configuration
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
@@ -41,15 +38,16 @@ else:
 # Admin security key from environment
 ADMIN_KEY = os.environ.get('ADMIN_KEY', 'Freud@')
 
-# VPS Configuration - LOCAL FILE SERVING
+# VPS Configuration
 VPS_IP = "213.170.133.116"
+VPS_ENDPOINT = os.environ.get('VPS_1_ENDPOINT', f'http://{VPS_IP}:8080')
 VPS_NAME = "primary_vps"
 
 # Local file paths
 DATA_DIR = "data/vps_1/ip_213.170.133.116"
 QR_DIR = "static/qr_codes/vps_1/ip_213.170.133.116"
 
-# Service Tiers - MUST MATCH YOUR LOCAL FILE STRUCTURE
+# Service Tiers
 SERVICE_TIERS = {
     'test': {
         'name': 'Free Test',
@@ -104,127 +102,6 @@ SERVICE_TIERS = {
 # Abuse Prevention - In-memory tracking
 test_usage_tracker = defaultdict(list)
 
-# Enhanced slot tracking
-SLOTS_FILE = 'enhanced_slots.json'
-
-def load_slots_data():
-    """Load slots data from JSON file"""
-    if os.path.exists(SLOTS_FILE):
-        try:
-            with open(SLOTS_FILE, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading slots: {e}")
-    
-    # Create initial structure
-    return {
-        "orders": {},
-        "assigned_configs": {},  # Track which config files are assigned
-        "last_cleanup": datetime.now().isoformat()
-    }
-
-def save_slots_data(data):
-    """Save slots data to JSON file"""
-    try:
-        with open(SLOTS_FILE, 'w') as f:
-            json.dump(data, f, indent=2, default=str)
-    except Exception as e:
-        logger.error(f"Error saving slots: {e}")
-
-def get_available_config_files(tier: str):
-    """Get list of available config files for a tier"""
-    config_dir = os.path.join(DATA_DIR, tier)
-    if not os.path.exists(config_dir):
-        logger.error(f"Config directory not found: {config_dir}")
-        return []
-    
-    config_files = glob.glob(os.path.join(config_dir, "*.conf"))
-    available_configs = []
-    
-    # Load current assignments
-    slots_data = load_slots_data()
-    assigned_configs = slots_data.get("assigned_configs", {})
-    
-    for config_path in config_files:
-        config_filename = os.path.basename(config_path)
-        config_id = config_filename.replace('.conf', '')
-        
-        # Check if this config is already assigned and active
-        if config_id in assigned_configs:
-            order_id = assigned_configs[config_id]
-            order_data = slots_data.get("orders", {}).get(order_id)
-            
-            if order_data and order_data.get("status") == "active":
-                # Check if expired
-                try:
-                    expires_at = datetime.fromisoformat(order_data["expires_at"])
-                    if datetime.now() > expires_at:
-                        # Config is expired, available for reuse
-                        available_configs.append(config_id)
-                except:
-                    available_configs.append(config_id)
-            else:
-                # Order doesn't exist or not active, config is available
-                available_configs.append(config_id)
-        else:
-            # Config not assigned, available
-            available_configs.append(config_id)
-    
-    return available_configs
-
-def assign_specific_config(tier: str, user_fingerprint: str):
-    """Assign a specific config file to a user"""
-    try:
-        # Get available configs
-        available_configs = get_available_config_files(tier)
-        
-        if not available_configs:
-            logger.error(f"No available config files for tier: {tier}")
-            return None
-        
-        # Choose a random available config
-        config_id = random.choice(available_configs)
-        
-        # Load current data
-        slots_data = load_slots_data()
-        
-        # Generate order details
-        order_id = str(uuid.uuid4())
-        order_number = generate_order_number(tier)
-        
-        # Calculate expiration
-        now = datetime.now()
-        if tier == 'test':
-            expires_at = now + timedelta(minutes=15)
-        else:
-            tier_config = SERVICE_TIERS[tier]
-            expires_at = now + timedelta(days=tier_config['duration_days'])
-        
-        # Store order
-        slots_data["orders"][order_id] = {
-            "order_number": order_number,
-            "tier": tier,
-            "ip_address": VPS_IP,
-            "vps_name": VPS_NAME,
-            "config_id": config_id,  # Store which config file is assigned
-            "status": "active",
-            "assigned_at": now.isoformat(),
-            "expires_at": expires_at.isoformat(),
-            "user_fingerprint": user_fingerprint
-        }
-        
-        # Mark config as assigned
-        slots_data["assigned_configs"][config_id] = order_id
-        
-        save_slots_data(slots_data)
-        
-        logger.info(f"Assigned {tier} config {config_id} (order {order_number}) to {user_fingerprint}")
-        return order_id, order_number, config_id
-        
-    except Exception as e:
-        logger.error(f"Error assigning config: {e}")
-        return None
-
 # Admin authentication decorator
 def admin_required(f):
     @wraps(f)
@@ -232,7 +109,7 @@ def admin_required(f):
         provided_key = request.args.get('key') or request.headers.get('X-Admin-Key')
         if provided_key != ADMIN_KEY:
             logger.warning(f"Admin access denied. Expected: {ADMIN_KEY}, Got: {provided_key}")
-            abort(404)  # Return 404 instead of 403 to hide existence
+            abort(404)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -267,44 +144,29 @@ def check_test_vpn_abuse(request):
     
     return True, f"Test VPN granted. {3 - len(test_usage_tracker[fingerprint])} remaining today."
 
-def generate_order_number(tier: str) -> str:
-    """Generate order number with tier-specific prefix"""
-    tier_config = SERVICE_TIERS.get(tier, {})
-    prefix = tier_config.get('order_prefix', '42')
-    return f"{prefix}{str(uuid.uuid4()).replace('-', '')[:6].upper()}"
+def get_available_config_files(tier: str):
+    """Get list of available config files for a tier"""
+    config_dir = os.path.join(DATA_DIR, tier)
+    if not os.path.exists(config_dir):
+        logger.error(f"Config directory not found: {config_dir}")
+        return []
+    
+    config_files = glob.glob(os.path.join(config_dir, "*.conf"))
+    available_configs = []
+    
+    for config_path in config_files:
+        config_filename = os.path.basename(config_path)
+        config_id = config_filename.replace('.conf', '')
+        available_configs.append(config_id)
+    
+    return available_configs
 
-def cleanup_expired_orders():
-    """Clean up expired orders and free up config files"""
-    try:
-        slots_data = load_slots_data()
-        now = datetime.now()
-        expired_count = 0
-        
-        for order_id, order_data in list(slots_data["orders"].items()):
-            if order_data.get("status") == "active":
-                try:
-                    expires_at = datetime.fromisoformat(order_data["expires_at"])
-                    if now > expires_at:
-                        order_data["status"] = "expired"
-                        expired_count += 1
-                        
-                        # Free up the config file
-                        config_id = order_data.get("config_id")
-                        if config_id and config_id in slots_data.get("assigned_configs", {}):
-                            del slots_data["assigned_configs"][config_id]
-                            logger.info(f"Freed config {config_id} from expired order {order_data.get('order_number')}")
-                            
-                except Exception as e:
-                    logger.error(f"Error processing order {order_id}: {e}")
-        
-        if expired_count > 0:
-            save_slots_data(slots_data)
-            logger.info(f"Expired {expired_count} orders and freed their configs")
-            
-        return expired_count
-    except Exception as e:
-        logger.error(f"Cleanup error: {e}")
-        return 0
+def get_random_config_id(tier: str):
+    """Get a random available config ID for a tier"""
+    available_configs = get_available_config_files(tier)
+    if not available_configs:
+        return None
+    return random.choice(available_configs)
 
 # === MAIN ROUTES ===
 
@@ -363,8 +225,9 @@ def order_lookup():
 
 @app.route('/get-test-vpn', methods=['POST'])
 def get_test_vpn():
-    """Assign a 15-minute test VPN with abuse prevention"""
-    cleanup_expired_orders()
+    """Assign a 15-minute test VPN with abuse prevention and real expiration"""
+    # Clean up expired orders first
+    db.cleanup_expired_orders()
     
     # Check for abuse
     allowed, message = check_test_vpn_abuse(request)
@@ -374,18 +237,29 @@ def get_test_vpn():
             'limit_info': message
         }), 429
     
-    user_fingerprint = get_client_fingerprint(request)
-    
-    # Assign slot with specific config
-    result = assign_specific_config('test', user_fingerprint)
-    
-    if not result:
+    # Get available config
+    config_id = get_random_config_id('test')
+    if not config_id:
         return jsonify({
             'error': 'No test slots available. Please try again later or purchase a paid plan.',
             'suggestion': 'All test configurations are currently in use.'
         }), 503
     
-    order_id, order_number, config_id = result
+    user_fingerprint = get_client_fingerprint(request)
+    
+    # Create order in database with VPS timer
+    order_id, order_number = db.create_order(
+        tier='test',
+        config_id=config_id,
+        vps_ip=VPS_IP,
+        user_fingerprint=user_fingerprint
+    )
+    
+    if not order_id:
+        return jsonify({
+            'error': 'Failed to create test order',
+            'suggestion': 'Please try again or contact support'
+        }), 500
     
     # Store in session for download
     session['test_slot'] = order_id
@@ -418,8 +292,8 @@ def create_checkout_session():
             return jsonify({'error': 'Invalid service tier'}), 400
         
         # Check availability
-        available_configs = get_available_config_files(tier)
-        if not available_configs:
+        config_id = get_random_config_id(tier)
+        if not config_id:
             return jsonify({'error': f'No {tier} slots available. Please try again later or choose a different plan.'}), 503
         
         tier_config = SERVICE_TIERS[tier]
@@ -443,6 +317,7 @@ def create_checkout_session():
             cancel_url=url_for('order', _external=True),
             metadata={
                 'tier': tier,
+                'config_id': config_id,
                 'ip_address': ip_address,
                 'vps_name': VPS_NAME
             }
@@ -475,16 +350,21 @@ def payment_success():
         # Extract metadata
         metadata = checkout_session.metadata
         tier = metadata.get('tier')
+        config_id = metadata.get('config_id')
         ip_address = metadata.get('ip_address')
         vps_name = metadata.get('vps_name')
         
-        # Assign new slot with specific config
+        # Create order with VPS timer
         user_fingerprint = get_client_fingerprint(request)
-        result = assign_specific_config(tier, user_fingerprint)
+        order_id, order_number = db.create_order(
+            tier=tier,
+            config_id=config_id,
+            vps_ip=ip_address,
+            stripe_session_id=session_id,
+            user_fingerprint=user_fingerprint
+        )
         
-        if result:
-            order_id, order_number, config_id = result
-            
+        if order_id:
             # Store in session for download access
             session['purchase_order'] = order_number
             session['purchase_tier'] = tier
@@ -507,8 +387,8 @@ def payment_success():
                                  order_data=order_data, 
                                  tier_config=SERVICE_TIERS[tier])
         else:
-            logger.error(f"[PAYMENT] No available configs for {tier} - session {session_id}")
-            return "No slots available for selected plan - contact support", 503
+            logger.error(f"[PAYMENT] Failed to create order for session {session_id}")
+            return "Order creation failed - contact support", 500
             
     except stripe.error.StripeError as e:
         logger.error(f"[PAYMENT] Stripe error processing payment: {e}")
@@ -641,16 +521,10 @@ def check_order():
         return jsonify({'error': 'Invalid order number format'})
     
     # Clean up expired orders first
-    cleanup_expired_orders()
+    db.cleanup_expired_orders()
     
-    # Find order in slots data
-    slots_data = load_slots_data()
-    order_data = None
-    
-    for order_id, data in slots_data["orders"].items():
-        if data.get("order_number") == order_number:
-            order_data = data
-            break
+    # Get order from database
+    order_data = db.get_order_by_number(order_number)
     
     if not order_data:
         return jsonify({
@@ -664,7 +538,10 @@ def check_order():
     
     if order_data.get('expires_at'):
         try:
-            expires_at = datetime.fromisoformat(order_data['expires_at'])
+            expires_at = order_data['expires_at']
+            if isinstance(expires_at, str):
+                expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+            
             now = datetime.now()
             
             if expires_at > now:
@@ -708,10 +585,10 @@ def check_order():
 @admin_required
 def admin():
     """Main admin panel"""
-    cleanup_expired_orders()
+    db.cleanup_expired_orders()
     
-    # Get current orders
-    slots_data = load_slots_data()
+    # Get current orders from database
+    orders = db.get_all_orders()
     
     # Get availability statistics
     availability_stats = {}
@@ -737,7 +614,7 @@ def admin():
     return render_template('admin.html', 
                          vps_report=vps_report,
                          service_tiers=SERVICE_TIERS,
-                         orders=slots_data.get('orders', {}))
+                         orders=orders)
 
 @app.route('/admin/servers')
 @admin_required
@@ -773,12 +650,12 @@ def admin_servers():
 def admin_force_cleanup():
     """Force cleanup of expired orders"""
     try:
-        expired_count = cleanup_expired_orders()
+        expired_count = db.cleanup_expired_orders()
         
         return jsonify({
             'success': True,
             'expired_count': expired_count,
-            'message': f'Cleaned up {expired_count} expired orders and freed their config files'
+            'message': f'Cleaned up {expired_count} expired orders'
         })
         
     except Exception as e:
@@ -810,7 +687,7 @@ def api_status():
             'tiers': tier_availability,
             'vps_count': 1,
             'vps_ip': VPS_IP,
-            'database_type': 'JSON + Local Files'
+            'database_type': 'PostgreSQL'
         })
         
     except Exception as e:
@@ -826,10 +703,12 @@ def api_health():
     return jsonify({
         'status': 'healthy',
         'service': 'tunnelgrain-enhanced',
-        'version': '3.1.0',
+        'version': '4.0.0',
         'timestamp': datetime.now().isoformat(),
         'admin_key_configured': bool(ADMIN_KEY),
         'stripe_configured': bool(STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY),
+        'database_configured': db.database_url is not None,
+        'vps_endpoint': VPS_ENDPOINT,
         'local_files': {
             'data_dir_exists': os.path.exists(DATA_DIR),
             'qr_dir_exists': os.path.exists(QR_DIR)
@@ -867,7 +746,9 @@ if __name__ == '__main__':
     logger.info("🚀 Tunnelgrain VPN Service Starting...")
     logger.info(f"Admin Key: {'Configured' if ADMIN_KEY else 'Not Set'}")
     logger.info(f"Stripe: {'Configured' if STRIPE_PUBLISHABLE_KEY else 'Not Configured'}")
+    logger.info(f"Database: {'PostgreSQL' if db.database_url else 'Not Configured'}")
     logger.info(f"VPS IP: {VPS_IP}")
+    logger.info(f"VPS Endpoint: {VPS_ENDPOINT}")
     logger.info(f"Service Tiers: {list(SERVICE_TIERS.keys())}")
     
     # Check config file availability
