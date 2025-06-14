@@ -19,7 +19,7 @@ class TunnelgrainDB:
         
         # VPS endpoints configuration
         self.vps_endpoints = {
-            'vps_1': os.environ.get('VPS_1_ENDPOINT', 'http://213.170.133.116:8080')
+            'vps_1': os.environ.get('VPS_1_ENDPOINT', 'http://213.170.133.116:8081')
         }
         
         if self.database_url:
@@ -107,6 +107,10 @@ class TunnelgrainDB:
         if tier != 'test':
             return True  # No limits for paid tiers
         
+        if not user_fingerprint:
+            logger.warning("No fingerprint provided for daily limit check")
+            return True  # Allow if no fingerprint
+        
         today = datetime.now().date()
         
         if self.mode == 'postgresql':
@@ -114,7 +118,13 @@ class TunnelgrainDB:
                 conn = self.get_connection()
                 cursor = conn.cursor()
                 
-                # Check today's count
+                # First, clean up old records (older than 7 days)
+                cursor.execute("""
+                    DELETE FROM daily_limits 
+                    WHERE date < CURRENT_DATE - INTERVAL '7 days'
+                """)
+                
+                # Check today's count for this fingerprint
                 cursor.execute("""
                     SELECT test_count FROM daily_limits 
                     WHERE fingerprint = %s AND date = %s
@@ -123,14 +133,17 @@ class TunnelgrainDB:
                 result = cursor.fetchone()
                 current_count = result[0] if result else 0
                 
+                conn.commit()
                 cursor.close()
                 conn.close()
                 
+                logger.info(f"Daily limit check for {user_fingerprint[:8]}...: {current_count}/3 tests used today")
                 return current_count < 3  # Allow 3 tests per day
                 
             except Exception as e:
                 logger.error(f"❌ Error checking daily limit: {e}")
-                return True  # Allow on error
+                # On error, allow the test to prevent blocking legitimate users
+                return True
         else:
             # JSON mode
             with open(self.json_file, 'r') as f:
@@ -147,6 +160,10 @@ class TunnelgrainDB:
     
     def increment_daily_limit(self, user_fingerprint):
         """Increment daily test count"""
+        if not user_fingerprint:
+            logger.warning("No fingerprint provided for increment")
+            return
+            
         today = datetime.now().date()
         
         if self.mode == 'postgresql':
@@ -154,14 +171,24 @@ class TunnelgrainDB:
                 conn = self.get_connection()
                 cursor = conn.cursor()
                 
+                # Use UPSERT to handle both insert and update
                 cursor.execute("""
                     INSERT INTO daily_limits (fingerprint, date, test_count, last_test_at)
                     VALUES (%s, %s, 1, CURRENT_TIMESTAMP)
-                    ON CONFLICT (fingerprint) 
+                    ON CONFLICT (fingerprint, date) 
                     DO UPDATE SET 
                         test_count = daily_limits.test_count + 1,
                         last_test_at = CURRENT_TIMESTAMP
                 """, (user_fingerprint, today))
+                
+                # Get the new count for logging
+                cursor.execute("""
+                    SELECT test_count FROM daily_limits 
+                    WHERE fingerprint = %s AND date = %s
+                """, (user_fingerprint, today))
+                
+                new_count = cursor.fetchone()[0]
+                logger.info(f"Incremented daily limit for {user_fingerprint[:8]}...: now {new_count}/3")
                 
                 conn.commit()
                 cursor.close()
@@ -169,6 +196,7 @@ class TunnelgrainDB:
                 
             except Exception as e:
                 logger.error(f"❌ Error incrementing daily limit: {e}")
+                # Don't block the user if increment fails
         else:
             # JSON mode
             with open(self.json_file, 'r') as f:

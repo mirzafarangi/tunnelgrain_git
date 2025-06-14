@@ -408,4 +408,4 @@ if __name__ == '__main__':
     logger.info(f"Peer mapping: {PEER_MAP_FILE}")
     
     # Start Flask API
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    app.run(host='0.0.0.0', port=8081, debug=False)

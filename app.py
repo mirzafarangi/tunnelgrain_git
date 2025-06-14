@@ -38,13 +38,18 @@ if not STRIPE_PUBLISHABLE_KEY or not STRIPE_SECRET_KEY:
 else:
     stripe.api_key = STRIPE_SECRET_KEY
     logger.info("✅ Stripe configured successfully")
+    # Debug: Log Stripe key presence (not the full key!)
+    logger.info(f"Stripe Publishable Key loaded: {bool(STRIPE_PUBLISHABLE_KEY)}")
+    logger.info(f"Stripe Secret Key loaded: {bool(STRIPE_SECRET_KEY)}")
+    if STRIPE_PUBLISHABLE_KEY:
+        logger.info(f"Stripe Key prefix: {STRIPE_PUBLISHABLE_KEY[:7]}...")
 
 # Admin security key
 ADMIN_KEY = os.environ.get('ADMIN_KEY', 'Freud@')
 
 # VPS Configuration
 VPS_IP = "213.170.133.116"
-VPS_ENDPOINT = os.environ.get('VPS_1_ENDPOINT', f'http://{VPS_IP}:8080')
+VPS_ENDPOINT = os.environ.get('VPS_1_ENDPOINT', f'http://{VPS_IP}:8081')
 VPS_NAME = "primary_vps"
 
 # Local file paths (for serving configs/QR codes)
@@ -117,10 +122,30 @@ def admin_required(f):
 # Utility functions
 def get_client_fingerprint(request):
     """Create a privacy-respecting fingerprint for abuse prevention"""
-    ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
-    user_agent = request.headers.get('User-Agent', '')
-    fingerprint_data = f"{ip}:{user_agent}"
-    return hashlib.sha256(fingerprint_data.encode()).hexdigest()[:16]
+    # On Render, get the real IP from headers
+    real_ip = None
+    
+    # Try different headers that Render might use
+    for header in ['X-Real-IP', 'X-Forwarded-For', 'CF-Connecting-IP']:
+        ip_value = request.headers.get(header)
+        if ip_value:
+            # X-Forwarded-For can contain multiple IPs, take the first
+            real_ip = ip_value.split(',')[0].strip()
+            break
+    
+    # Fallback to remote_addr if no headers found
+    if not real_ip:
+        real_ip = request.remote_addr
+    
+    user_agent = request.headers.get('User-Agent', 'unknown')
+    
+    # Create fingerprint
+    fingerprint_data = f"{real_ip}:{user_agent}"
+    fingerprint = hashlib.sha256(fingerprint_data.encode()).hexdigest()[:16]
+    
+    logger.info(f"Fingerprint created: {fingerprint} from IP: {real_ip}")
+    
+    return fingerprint
 
 def get_available_config_files(tier: str):
     """Get list of available config files for a tier"""
@@ -178,6 +203,9 @@ def order():
         tier_name: [{'ip_address': VPS_IP, 'vps_name': VPS_NAME, 'available_slots': available_slots.get(tier_name, 0)}]
         for tier_name in SERVICE_TIERS.keys() if tier_name != 'test'
     }
+    
+    # Log for debugging
+    logger.info(f"Order page loaded with Stripe key: {STRIPE_PUBLISHABLE_KEY[:20]}...")
     
     return render_template('order.html', 
                          service_tiers=SERVICE_TIERS, 
@@ -667,6 +695,107 @@ def admin_force_cleanup():
             'error': str(e)
         }), 500
 
+@app.route('/admin/servers')
+@admin_required  
+def admin_servers():
+    """VPS health dashboard"""
+    # Get VPS status from daemon
+    vps_status = db.get_vps_status()
+    
+    # Build report structure
+    vps_report = {
+        'vps_status': {
+            VPS_NAME: {
+                'status': 'healthy' if not vps_status.get('error') else 'error',
+                'ip': VPS_IP,
+                'server_ip': VPS_IP,
+                'timestamp': datetime.now().isoformat(),
+                'error': vps_status.get('error'),
+                'tiers': {}
+            }
+        },
+        'summary': {
+            'total_vps': 1,
+            'active_orders': len([o for o in db.get_all_orders() if o.get('status') == 'active']),
+            'revenue_potential': sum(SERVICE_TIERS[tier]['price_cents'] * SERVICE_TIERS[tier]['capacity'] 
+                                   for tier in SERVICE_TIERS if tier != 'test')
+        },
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # Add tier statistics
+    for tier_name in SERVICE_TIERS.keys():
+        available_configs = get_available_config_files(tier_name)
+        vps_report['vps_status'][VPS_NAME]['tiers'][tier_name] = {
+            'available': len(available_configs),
+            'capacity': SERVICE_TIERS[tier_name]['capacity']
+        }
+    
+    return render_template('admin_servers.html',
+                         vps_report=vps_report,
+                         service_tiers=SERVICE_TIERS)
+
+# === DEBUG ENDPOINTS ===
+
+@app.route('/api/debug-fingerprint')
+def debug_fingerprint():
+    """Debug endpoint to check fingerprinting"""
+    fp = get_client_fingerprint(request)
+    
+    # Get all headers for debugging
+    headers = dict(request.headers)
+    
+    return jsonify({
+        'fingerprint': fp,
+        'remote_addr': request.remote_addr,
+        'headers': headers,
+        'x_forwarded_for': request.headers.get('X-Forwarded-For'),
+        'x_real_ip': request.headers.get('X-Real-IP'),
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/api/db-status')
+def db_status():
+    """Check database status"""
+    try:
+        # Try to get fingerprint count
+        fp = get_client_fingerprint(request)
+        
+        if db.mode == 'postgresql':
+            conn = db.get_connection()
+            cursor = conn.cursor()
+            
+            # Get today's test count for this fingerprint
+            cursor.execute("""
+                SELECT COUNT(*) as total_users,
+                       SUM(CASE WHEN date = CURRENT_DATE THEN test_count ELSE 0 END) as today_tests
+                FROM daily_limits
+                WHERE fingerprint = %s
+            """, (fp,))
+            
+            result = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                'database_mode': 'postgresql',
+                'your_fingerprint': fp,
+                'today_test_count': result[1] if result and result[1] else 0,
+                'can_test': db.check_daily_limit(fp, 'test')
+            })
+        else:
+            return jsonify({
+                'database_mode': 'json',
+                'your_fingerprint': fp,
+                'can_test': db.check_daily_limit(fp, 'test')
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'database_mode': db.mode if db else 'unknown'
+        }), 500
+
 # === API ENDPOINTS ===
 
 @app.route('/api/status')
@@ -689,7 +818,7 @@ def api_status():
             'tiers': tier_availability,
             'vps_count': 1,
             'vps_ip': VPS_IP,
-            'database_type': 'PostgreSQL',
+            'database_type': db.mode if db else 'unknown',
             'vps_endpoint': VPS_ENDPOINT
         })
         
@@ -708,11 +837,12 @@ def api_health():
         
         return jsonify({
             'status': 'healthy',
-            'service': 'tunnelgrain-fixed',
-            'version': '4.1.0',
+            'service': 'tunnelgrain-final',
+            'version': '5.0.0',
             'timestamp': datetime.now().isoformat(),
             'admin_key_configured': bool(ADMIN_KEY),
             'stripe_configured': bool(STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY),
+            'stripe_mode': 'test' if STRIPE_PUBLISHABLE_KEY and 'test' in STRIPE_PUBLISHABLE_KEY else 'live',
             'database': db_health,
             'vps_endpoint': VPS_ENDPOINT,
             'local_files': {
@@ -732,16 +862,20 @@ def api_health():
 
 @app.errorhandler(404)
 def not_found(error):
+    logger.warning(f"404 error: {request.url}")
     return render_template('404.html'), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    logger.error(f"❌ Internal error: {error}")
+    logger.error(f"❌ 500 Internal error: {error}")
     return render_template('500.html'), 500
+
+# === MAIN EXECUTION ===
 
 if __name__ == '__main__':
     # Verify setup
     logger.info("🚀 Tunnelgrain VPN Service Starting...")
+    logger.info(f"Database Mode: {db.mode if db else 'Not initialized'}")
     logger.info(f"Admin Key: {'✅ Configured' if ADMIN_KEY else '❌ Not Set'}")
     logger.info(f"Stripe: {'✅ Configured' if STRIPE_PUBLISHABLE_KEY else '❌ Not Configured'}")
     logger.info(f"VPS IP: {VPS_IP}")
@@ -749,10 +883,14 @@ if __name__ == '__main__':
     logger.info(f"Service Tiers: {list(SERVICE_TIERS.keys())}")
     
     # Check config file availability
+    total_configs = 0
     for tier_name in SERVICE_TIERS.keys():
         available = len(get_available_config_files(tier_name))
         capacity = SERVICE_TIERS[tier_name]['capacity']
         logger.info(f"Tier {tier_name}: {available}/{capacity} configs available")
+        total_configs += available
+    
+    logger.info(f"Total configs available: {total_configs}")
     
     # Verify data directories exist
     if not os.path.exists(DATA_DIR):
@@ -764,5 +902,12 @@ if __name__ == '__main__':
         logger.error(f"❌ QR code directory not found: {QR_DIR}")
     else:
         logger.info(f"✅ QR code directory found: {QR_DIR}")
+    
+    # Log debug endpoints
+    logger.info("📍 Debug endpoints available:")
+    logger.info("   - /api/debug-fingerprint - Check IP fingerprinting")
+    logger.info("   - /api/db-status - Check database status")
+    logger.info("   - /api/health - Full health check")
+    logger.info("   - /api/status - Service status")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
