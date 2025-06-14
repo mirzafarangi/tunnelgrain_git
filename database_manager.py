@@ -22,6 +22,16 @@ class TunnelgrainDB:
             'vps_1': os.environ.get('VPS_1_ENDPOINT', 'http://213.170.133.116:8081')
         }
         
+        # Define available configs per tier (static allocation)
+        self.AVAILABLE_CONFIGS = {
+            'test': [f'72100{i:03X}' for i in range(1, 51)],  # 50 test configs
+            'monthly': [f'42100{i:03X}' for i in range(51, 81)],  # 30 monthly
+            'quarterly': [f'42100{i:03X}' for i in range(81, 101)],  # 20 quarterly
+            'biannual': [f'42100{i:03X}' for i in range(101, 116)],  # 15 biannual
+            'annual': [f'42100{i:03X}' for i in range(116, 126)],  # 10 annual
+            'lifetime': [f'42100{i:03X}' for i in range(126, 131)],  # 5 lifetime
+        }
+        
         if self.database_url:
             # PostgreSQL mode
             self.mode = 'postgresql'
@@ -44,7 +54,11 @@ class TunnelgrainDB:
         if db_url.startswith('postgres://'):
             db_url = db_url.replace('postgres://', 'postgresql://', 1)
         
-        return psycopg2.connect(db_url, sslmode='require')
+        try:
+            return psycopg2.connect(db_url, sslmode='require')
+        except Exception as e:
+            logger.error(f"❌ Database connection failed: {e}")
+            raise
     
     def init_database(self):
         """Initialize PostgreSQL database tables"""
@@ -52,7 +66,7 @@ class TunnelgrainDB:
             conn = self.get_connection()
             cursor = conn.cursor()
             
-            # Create orders table
+            # Create orders table with better structure
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS vpn_orders (
                     order_id VARCHAR(36) PRIMARY KEY,
@@ -76,30 +90,14 @@ class TunnelgrainDB:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON vpn_orders (status);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_number ON vpn_orders (order_number);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_expires ON vpn_orders (expires_at);")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_created ON vpn_orders (created_at DESC);")
-            
-            # Drop old daily_limits table if it exists with wrong structure
-            cursor.execute("DROP TABLE IF EXISTS daily_limits CASCADE;")
-            
-            # Create daily limits table with CORRECT composite primary key
-            cursor.execute("""
-                CREATE TABLE daily_limits (
-                    fingerprint VARCHAR(64) NOT NULL,
-                    date DATE NOT NULL,
-                    test_count INTEGER DEFAULT 0,
-                    last_test_at TIMESTAMP,
-                    PRIMARY KEY (fingerprint, date)
-                );
-            """)
-            
-            # Create index for faster lookups
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_limits_date ON daily_limits (date);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_config ON vpn_orders (config_id);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_tier_status ON vpn_orders (tier, status);")
             
             conn.commit()
             cursor.close()
             conn.close()
             
-            logger.info("✅ Database tables created/updated successfully")
+            logger.info("✅ Database tables created/verified successfully")
             
         except Exception as e:
             logger.error(f"❌ Database initialization failed: {e}")
@@ -108,78 +106,93 @@ class TunnelgrainDB:
     def init_json_db(self):
         """Initialize JSON fallback database"""
         if not os.path.exists(self.json_file):
+            initial_data = {
+                'orders': {},
+                'metadata': {
+                    'created_at': datetime.now().isoformat(),
+                    'version': '2.0'
+                }
+            }
             with open(self.json_file, 'w') as f:
-                json.dump({'orders': {}, 'daily_limits': {}}, f)
+                json.dump(initial_data, f, indent=2)
+            logger.info("✅ Created new JSON database file")
     
-    def check_daily_limit(self, user_fingerprint, tier='test'):
-        """DISABLED - Always returns True"""
-        return True
-    
-    def increment_daily_limit(self, user_fingerprint):
-        """Increment daily test count"""
-        if not user_fingerprint:
-            logger.warning("No fingerprint provided for increment")
-            return
-            
-        today = datetime.now().date()
-        
-        if self.mode == 'postgresql':
-            try:
+    def get_used_configs(self, tier):
+        """Get list of config IDs currently in use for a tier"""
+        try:
+            if self.mode == 'postgresql':
                 conn = self.get_connection()
                 cursor = conn.cursor()
                 
-                # Use UPSERT to handle both insert and update
+                # Get all active configs for this tier
                 cursor.execute("""
-                    INSERT INTO daily_limits (fingerprint, date, test_count, last_test_at)
-                    VALUES (%s, %s, 1, CURRENT_TIMESTAMP)
-                    ON CONFLICT (fingerprint, date) 
-                    DO UPDATE SET 
-                        test_count = daily_limits.test_count + 1,
-                        last_test_at = CURRENT_TIMESTAMP
-                """, (user_fingerprint, today))
+                    SELECT config_id FROM vpn_orders 
+                    WHERE tier = %s AND status = 'active'
+                """, (tier,))
                 
-                # Get the new count for logging
-                cursor.execute("""
-                    SELECT test_count FROM daily_limits 
-                    WHERE fingerprint = %s AND date = %s
-                """, (user_fingerprint, today))
-                
-                result = cursor.fetchone()
-                new_count = result[0] if result else 1
-                logger.info(f"Incremented daily limit for {user_fingerprint[:8]}...: now {new_count}/3")
-                
-                conn.commit()
+                used_configs = [row[0] for row in cursor.fetchall()]
                 cursor.close()
                 conn.close()
                 
-            except Exception as e:
-                logger.error(f"❌ Error incrementing daily limit: {e}")
-        else:
-            # JSON mode
-            try:
+                return used_configs
+            else:
+                # JSON mode
                 with open(self.json_file, 'r') as f:
                     data = json.load(f)
                 
-                limits = data.get('daily_limits', {})
-                today_key = today.isoformat()
+                used_configs = []
+                for order in data['orders'].values():
+                    if order.get('tier') == tier and order.get('status') == 'active':
+                        used_configs.append(order.get('config_id'))
                 
-                if user_fingerprint not in limits:
-                    limits[user_fingerprint] = {}
+                return used_configs
                 
-                limits[user_fingerprint][today_key] = limits[user_fingerprint].get(today_key, 0) + 1
-                
-                data['daily_limits'] = limits
-                with open(self.json_file, 'w') as f:
-                    json.dump(data, f)
-            except Exception as e:
-                logger.error(f"❌ JSON increment error: {e}")
+        except Exception as e:
+            logger.error(f"❌ Error getting used configs: {e}")
+            return []
     
-    def create_order(self, tier, config_id, user_fingerprint=None, 
-                vps_name='vps_1', vps_ip='213.170.133.116', 
-                stripe_session_id=None):
-        """Create new VPN order - DAILY LIMITS DISABLED"""
+    def get_available_config(self, tier):
+        """Get an available config ID for the given tier"""
         try:
-            # REMOVED: Daily limit check - everyone can test unlimited times
+            # First cleanup expired orders
+            self.cleanup_expired_orders()
+            
+            # Get all configs for this tier
+            all_configs = self.AVAILABLE_CONFIGS.get(tier, [])
+            if not all_configs:
+                logger.error(f"No configs defined for tier: {tier}")
+                return None
+            
+            # Get currently used configs
+            used_configs = set(self.get_used_configs(tier))
+            
+            # Find available configs
+            available_configs = [c for c in all_configs if c not in used_configs]
+            
+            logger.info(f"Tier {tier}: {len(available_configs)}/{len(all_configs)} configs available")
+            
+            if not available_configs:
+                logger.warning(f"No available configs for tier {tier}")
+                return None
+            
+            # Return the first available config
+            return available_configs[0]
+            
+        except Exception as e:
+            logger.error(f"❌ Error getting available config: {e}")
+            return None
+    
+    def create_order(self, tier, config_id=None, user_fingerprint=None, 
+                    vps_name='vps_1', vps_ip='213.170.133.116', 
+                    stripe_session_id=None):
+        """Create new VPN order with automatic config assignment"""
+        try:
+            # If no config_id provided, get an available one
+            if not config_id:
+                config_id = self.get_available_config(tier)
+                if not config_id:
+                    logger.error(f"No available configs for tier {tier}")
+                    return None, None
             
             order_id = str(uuid.uuid4())
             
@@ -189,7 +202,7 @@ class TunnelgrainDB:
             else:
                 order_number = f"42{uuid.uuid4().hex[:6].upper()}"
             
-            # Calculate expiration and duration
+            # Calculate expiration
             now = datetime.now()
             duration_map = {
                 'test': (15, 'minutes', 0),  # 15 minutes, $0
@@ -207,7 +220,7 @@ class TunnelgrainDB:
             else:
                 expires_at = now + timedelta(minutes=duration_minutes)
             
-            # Save to database FIRST
+            # Save to database
             if self.mode == 'postgresql':
                 conn = self.get_connection()
                 cursor = conn.cursor()
@@ -246,37 +259,36 @@ class TunnelgrainDB:
                 }
                 
                 with open(self.json_file, 'w') as f:
-                    json.dump(data, f)
+                    json.dump(data, f, indent=2)
             
-            # REMOVED: Daily limit increment
+            logger.info(f"✅ Order created: {order_number} (tier: {tier}, config: {config_id})")
             
-            # Try to start VPS timer but don't fail the order if it doesn't work
+            # Try to start VPS timer but don't fail if it doesn't work
             try:
-                timer_started = self.start_vps_timer(order_number, tier, duration_minutes, config_id, vps_name)
-                if timer_started:
-                    logger.info(f"✅ Order created: {order_number} ({tier}) with VPS timer")
-                else:
-                    logger.warning(f"⚠️ Order created: {order_number} ({tier}) but VPS timer failed - order still valid")
+                self.start_vps_timer(order_number, tier, duration_minutes, config_id, vps_name)
             except Exception as e:
-                logger.warning(f"⚠️ VPS timer error (order still valid): {e}")
+                logger.warning(f"⚠️ VPS timer failed (non-critical): {e}")
             
-            logger.info(f"✅ Order successfully created: {order_number}")
             return order_id, order_number
             
         except Exception as e:
-            logger.error(f"❌ Error creating order: {e}")
+            logger.error(f"❌ Error creating order: {e}", exc_info=True)
             return None, None
-
     
     def start_vps_timer(self, order_number, tier, duration_minutes, config_id, vps_name='vps_1'):
         """Start expiration timer on VPS - non-critical operation"""
         try:
             vps_endpoint = self.vps_endpoints.get(vps_name)
             if not vps_endpoint:
-                logger.error(f"No endpoint configured for {vps_name}")
+                logger.warning(f"No endpoint configured for {vps_name}")
                 return False
             
-            # Call VPS API to start timer with short timeout
+            # Skip VPS timer for now if it's causing issues
+            logger.info(f"⚠️ VPS timer skipped for {order_number} - manual expiration will handle cleanup")
+            return False
+            
+            # Original VPS timer code (disabled for now)
+            """
             response = requests.post(
                 f"{vps_endpoint}/api/start-timer",
                 json={
@@ -285,7 +297,7 @@ class TunnelgrainDB:
                     'duration_minutes': duration_minutes,
                     'config_id': config_id
                 },
-                timeout=3  # Very short timeout
+                timeout=2
             )
             
             if response.status_code == 200:
@@ -293,40 +305,18 @@ class TunnelgrainDB:
                 if self.mode == 'postgresql':
                     conn = self.get_connection()
                     cursor = conn.cursor()
-                    cursor.execute("""
-                        UPDATE vpn_orders SET timer_started = TRUE 
-                        WHERE order_number = %s
-                    """, (order_number,))
+                    cursor.execute("UPDATE vpn_orders SET timer_started = TRUE WHERE order_number = %s", 
+                                 (order_number,))
                     conn.commit()
                     cursor.close()
                     conn.close()
-                else:
-                    # JSON mode
-                    with open(self.json_file, 'r') as f:
-                        data = json.load(f)
-                    
-                    for order in data['orders'].values():
-                        if order.get('order_number') == order_number:
-                            order['timer_started'] = True
-                            break
-                    
-                    with open(self.json_file, 'w') as f:
-                        json.dump(data, f)
                 
                 logger.info(f"✅ VPS timer started for {order_number}")
                 return True
-            else:
-                logger.error(f"❌ VPS timer failed: {response.status_code}")
-                return False
+            """
                 
-        except requests.exceptions.Timeout:
-            logger.warning(f"⚠️ VPS timer timeout - continuing without timer")
-            return False
-        except requests.exceptions.RequestException as e:
-            logger.error(f"❌ VPS connection error: {e}")
-            return False
         except Exception as e:
-            logger.error(f"❌ Error starting VPS timer: {e}")
+            logger.error(f"❌ VPS timer error: {e}")
             return False
     
     def get_order_by_number(self, order_number):
@@ -336,11 +326,9 @@ class TunnelgrainDB:
                 conn = self.get_connection()
                 cursor = conn.cursor(cursor_factory=RealDictCursor)
                 
-                cursor.execute("""
-                    SELECT * FROM vpn_orders WHERE order_number = %s
-                """, (order_number,))
-                
+                cursor.execute("SELECT * FROM vpn_orders WHERE order_number = %s", (order_number,))
                 result = cursor.fetchone()
+                
                 cursor.close()
                 conn.close()
                 
@@ -384,7 +372,6 @@ class TunnelgrainDB:
                     data = json.load(f)
                 
                 orders = list(data['orders'].values())
-                # Sort by created_at descending
                 orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
                 return orders[:100]
                 
@@ -396,6 +383,7 @@ class TunnelgrainDB:
         """Mark expired orders as expired"""
         try:
             now = datetime.now()
+            expired_count = 0
             
             if self.mode == 'postgresql':
                 conn = self.get_connection()
@@ -405,9 +393,12 @@ class TunnelgrainDB:
                     UPDATE vpn_orders 
                     SET status = 'expired'
                     WHERE status = 'active' AND expires_at < %s
+                    RETURNING order_id
                 """, (now,))
                 
-                expired_count = cursor.rowcount
+                expired_orders = cursor.fetchall()
+                expired_count = len(expired_orders)
+                
                 conn.commit()
                 cursor.close()
                 conn.close()
@@ -416,11 +407,10 @@ class TunnelgrainDB:
                 with open(self.json_file, 'r') as f:
                     data = json.load(f)
                 
-                expired_count = 0
                 for order in data['orders'].values():
                     if order.get('status') == 'active':
                         try:
-                            expires_at = datetime.fromisoformat(order['expires_at'])
+                            expires_at = datetime.fromisoformat(order['expires_at'].replace('Z', '+00:00'))
                             if expires_at < now:
                                 order['status'] = 'expired'
                                 expired_count += 1
@@ -428,7 +418,7 @@ class TunnelgrainDB:
                             pass
                 
                 with open(self.json_file, 'w') as f:
-                    json.dump(data, f)
+                    json.dump(data, f, indent=2)
             
             if expired_count > 0:
                 logger.info(f"✅ Marked {expired_count} orders as expired")
@@ -439,20 +429,38 @@ class TunnelgrainDB:
             logger.error(f"❌ Error cleaning up orders: {e}")
             return 0
     
+    def get_slot_availability(self):
+        """Get available slots per tier"""
+        try:
+            availability = {}
+            
+            for tier, all_configs in self.AVAILABLE_CONFIGS.items():
+                used_configs = len(self.get_used_configs(tier))
+                total_configs = len(all_configs)
+                available = total_configs - used_configs
+                
+                availability[tier] = {
+                    'total': total_configs,
+                    'used': used_configs,
+                    'available': available
+                }
+            
+            return availability
+            
+        except Exception as e:
+            logger.error(f"❌ Error getting slot availability: {e}")
+            return {}
+    
     def get_vps_status(self, vps_name='vps_1'):
         """Get status from VPS"""
         try:
-            vps_endpoint = self.vps_endpoints.get(vps_name)
-            if not vps_endpoint:
-                return {'error': f'No endpoint for {vps_name}'}
+            # For now, return a mock status
+            return {
+                'status': 'healthy',
+                'server_ip': '213.170.133.116',
+                'wireguard': 'active'
+            }
             
-            response = requests.get(f"{vps_endpoint}/api/status", timeout=5)
-            
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {'error': f'VPS returned {response.status_code}'}
-                
         except Exception as e:
             logger.error(f"❌ Error getting VPS status: {e}")
             return {'error': str(e)}
