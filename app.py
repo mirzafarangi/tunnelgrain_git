@@ -236,15 +236,51 @@ def get_test_vpn():
         # Clean up expired orders first
         db.cleanup_expired_orders()
         
+        # Get user fingerprint
+        user_fingerprint = get_client_fingerprint(request)
+        logger.info(f"Test VPN request from fingerprint: {user_fingerprint}")
+        
+        # Check if user can get a test VPN
+        can_test = db.check_daily_limit(user_fingerprint, 'test')
+        if not can_test:
+            return jsonify({
+                'error': 'You have reached the daily limit of 3 test VPNs. Please try again tomorrow or purchase a paid plan.',
+                'suggestion': 'Each device/network can request up to 3 test VPNs per day.'
+            }), 429
+        
         # Get available config
-        config_id = get_random_config_id('test')
-        if not config_id:
+        available_configs = get_available_config_files('test')
+        logger.info(f"Available test configs: {len(available_configs)}")
+        
+        if not available_configs:
             return jsonify({
                 'error': 'No test slots available. Please try again later or purchase a paid plan.',
                 'suggestion': 'All test configurations are currently in use.'
             }), 503
         
-        user_fingerprint = get_client_fingerprint(request)
+        # Get already used configs for this fingerprint today
+        used_configs = []
+        if db.mode == 'postgresql':
+            conn = db.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT config_id FROM vpn_orders 
+                WHERE user_fingerprint = %s 
+                AND tier = 'test' 
+                AND created_at::date = CURRENT_DATE
+            """, (user_fingerprint,))
+            used_configs = [row[0] for row in cursor.fetchall()]
+            cursor.close()
+            conn.close()
+        
+        # Try to get an unused config
+        unused_configs = [c for c in available_configs if c not in used_configs]
+        if unused_configs:
+            config_id = random.choice(unused_configs)
+        else:
+            config_id = random.choice(available_configs)
+        
+        logger.info(f"Selected config: {config_id}")
         
         # Create order in database with VPS timer
         order_id, order_number = db.create_order(
@@ -254,6 +290,7 @@ def get_test_vpn():
         )
         
         if not order_id:
+            logger.error(f"Failed to create test order for {user_fingerprint}")
             return jsonify({
                 'error': 'Failed to create test order. You may have exceeded the daily limit (3 tests per day).',
                 'suggestion': 'Please try again tomorrow or purchase a paid plan.'
@@ -283,7 +320,7 @@ def get_test_vpn():
             'error': 'Service temporarily unavailable. Please try again.',
             'technical_details': str(e) if app.debug else None
         }), 500
-
+    
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     """Create Stripe checkout session for VPN purchase with proper error handling"""
@@ -405,6 +442,20 @@ def payment_success():
             logger.error(f"❌ Missing metadata in session {session_id}")
             return "Invalid payment data", 400
         
+        # Verify config file exists
+        config_path = os.path.join(DATA_DIR, tier, f"{config_id}.conf")
+        qr_path = os.path.join(QR_DIR, tier, f"{config_id}.png")
+        
+        if not os.path.exists(config_path):
+            logger.error(f"❌ Config file not found: {config_path}")
+            # Try to find any available config as fallback
+            available_configs = get_available_config_files(tier)
+            if available_configs:
+                config_id = available_configs[0]
+                logger.info(f"Using fallback config: {config_id}")
+            else:
+                return "Configuration error - please contact support@tunnelgrain.com with your payment confirmation", 500
+        
         # Create order with VPS timer
         user_fingerprint = get_client_fingerprint(request)
         order_id, order_number = db.create_order(
@@ -438,7 +489,27 @@ def payment_success():
                                  tier_config=SERVICE_TIERS[tier])
         else:
             logger.error(f"❌ Failed to create order for paid session {session_id}")
-            return "Order creation failed - please contact support with your payment confirmation", 500
+            # Still show success page but with support message
+            order_data = {
+                'order_id': f"TEMP-{session_id[:8]}",
+                'order_number': f"SUPPORT-{session_id[:8]}",
+                'tier': tier,
+                'config_id': config_id,
+                'ip_address': ip_address,
+                'vps_name': vps_name
+            }
+            
+            # Store in session anyway for manual recovery
+            session['purchase_order'] = order_data['order_number']
+            session['purchase_tier'] = tier
+            session['purchase_config'] = config_id
+            session['purchase_ip'] = ip_address
+            session['purchase_vps'] = vps_name
+            
+            return render_template('payment_success.html', 
+                                 order_data=order_data, 
+                                 tier_config=SERVICE_TIERS[tier],
+                                 show_support_message=True)
             
     except stripe.error.StripeError as e:
         logger.error(f"❌ Stripe error during payment success: {e}")
@@ -446,7 +517,7 @@ def payment_success():
     except Exception as e:
         logger.error(f"❌ Payment success processing error: {e}")
         return f"Error processing payment: {str(e)}", 500
-
+    
 # === DOWNLOAD ROUTES ===
 
 @app.route('/download-test-config')
