@@ -2,13 +2,14 @@
 """
 Fix Tunnelgrain Database Structure
 Run this script to fix the daily_limits table structure
+Save this as: scripts/local/fix_database_structure.py
 """
 
 import os
 import psycopg2
 from datetime import datetime
 
-# Your database URL
+# Your database URL - set this as environment variable or hardcode for one-time use
 DATABASE_URL = os.environ.get('DATABASE_URL', "postgresql://tunnelgrain_db_user:L69lcg8I8gjiD1LBeqqjpW1uJwcC1jsw@dpg-d169gsuuk2gs73f4q04g-a.frankfurt-postgres.render.com/tunnelgrain_db")
 
 def fix_database():
@@ -111,6 +112,16 @@ def fix_database():
         today_test_count = cursor.fetchone()[0]
         print(f"📊 Test orders today: {today_test_count}")
         
+        # Clean up any expired orders
+        cursor.execute("""
+            UPDATE vpn_orders 
+            SET status = 'expired'
+            WHERE status = 'active' AND expires_at < CURRENT_TIMESTAMP;
+        """)
+        expired_count = cursor.rowcount
+        if expired_count > 0:
+            print(f"🧹 Marked {expired_count} expired orders as expired")
+        
         # Commit changes
         conn.commit()
         print("\n✅ Database structure fixed successfully!")
@@ -186,3 +197,4 @@ if __name__ == "__main__":
         print("You can now restart your application.")
     else:
         print("\n❌ Fix failed. Please check the error messages above.")
+        print("Make sure your DATABASE_URL is correct.")

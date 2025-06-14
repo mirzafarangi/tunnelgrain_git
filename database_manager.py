@@ -78,19 +78,28 @@ class TunnelgrainDB:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_expires ON vpn_orders (expires_at);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_created ON vpn_orders (created_at DESC);")
             
-            # Create daily limits table for abuse prevention
+            # Drop old daily_limits table if it exists with wrong structure
+            cursor.execute("DROP TABLE IF EXISTS daily_limits CASCADE;")
+            
+            # Create daily limits table with CORRECT composite primary key
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS daily_limits (
-                    fingerprint VARCHAR(64) PRIMARY KEY,
+                CREATE TABLE daily_limits (
+                    fingerprint VARCHAR(64) NOT NULL,
                     date DATE NOT NULL,
                     test_count INTEGER DEFAULT 0,
-                    last_test_at TIMESTAMP
+                    last_test_at TIMESTAMP,
+                    PRIMARY KEY (fingerprint, date)
                 );
             """)
+            
+            # Create index for faster lookups
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_limits_date ON daily_limits (date);")
             
             conn.commit()
             cursor.close()
             conn.close()
+            
+            logger.info("✅ Database tables created/updated successfully")
             
         except Exception as e:
             logger.error(f"❌ Database initialization failed: {e}")
@@ -109,7 +118,7 @@ class TunnelgrainDB:
         
         if not user_fingerprint:
             logger.warning("No fingerprint provided for daily limit check")
-            return True  # Allow if no fingerprint
+            return False  # Deny if no fingerprint for test
         
         today = datetime.now().date()
         
@@ -142,21 +151,25 @@ class TunnelgrainDB:
                 
             except Exception as e:
                 logger.error(f"❌ Error checking daily limit: {e}")
-                # On error, allow the test to prevent blocking legitimate users
-                return True
+                # On error, deny to prevent abuse
+                return False
         else:
             # JSON mode
-            with open(self.json_file, 'r') as f:
-                data = json.load(f)
-            
-            limits = data.get('daily_limits', {})
-            today_key = today.isoformat()
-            
-            if user_fingerprint not in limits:
-                limits[user_fingerprint] = {}
-            
-            current_count = limits[user_fingerprint].get(today_key, 0)
-            return current_count < 3
+            try:
+                with open(self.json_file, 'r') as f:
+                    data = json.load(f)
+                
+                limits = data.get('daily_limits', {})
+                today_key = today.isoformat()
+                
+                if user_fingerprint not in limits:
+                    limits[user_fingerprint] = {}
+                
+                current_count = limits[user_fingerprint].get(today_key, 0)
+                return current_count < 3
+            except Exception as e:
+                logger.error(f"❌ JSON daily limit check error: {e}")
+                return False
     
     def increment_daily_limit(self, user_fingerprint):
         """Increment daily test count"""
@@ -187,7 +200,8 @@ class TunnelgrainDB:
                     WHERE fingerprint = %s AND date = %s
                 """, (user_fingerprint, today))
                 
-                new_count = cursor.fetchone()[0]
+                result = cursor.fetchone()
+                new_count = result[0] if result else 1
                 logger.info(f"Incremented daily limit for {user_fingerprint[:8]}...: now {new_count}/3")
                 
                 conn.commit()
@@ -196,23 +210,25 @@ class TunnelgrainDB:
                 
             except Exception as e:
                 logger.error(f"❌ Error incrementing daily limit: {e}")
-                # Don't block the user if increment fails
         else:
             # JSON mode
-            with open(self.json_file, 'r') as f:
-                data = json.load(f)
-            
-            limits = data.get('daily_limits', {})
-            today_key = today.isoformat()
-            
-            if user_fingerprint not in limits:
-                limits[user_fingerprint] = {}
-            
-            limits[user_fingerprint][today_key] = limits[user_fingerprint].get(today_key, 0) + 1
-            
-            data['daily_limits'] = limits
-            with open(self.json_file, 'w') as f:
-                json.dump(data, f)
+            try:
+                with open(self.json_file, 'r') as f:
+                    data = json.load(f)
+                
+                limits = data.get('daily_limits', {})
+                today_key = today.isoformat()
+                
+                if user_fingerprint not in limits:
+                    limits[user_fingerprint] = {}
+                
+                limits[user_fingerprint][today_key] = limits[user_fingerprint].get(today_key, 0) + 1
+                
+                data['daily_limits'] = limits
+                with open(self.json_file, 'w') as f:
+                    json.dump(data, f)
+            except Exception as e:
+                logger.error(f"❌ JSON increment error: {e}")
     
     def create_order(self, tier, config_id, user_fingerprint=None, 
                     vps_name='vps_1', vps_ip='213.170.133.116', 
@@ -251,7 +267,7 @@ class TunnelgrainDB:
             else:
                 expires_at = now + timedelta(minutes=duration_minutes)
             
-            # Save to database
+            # Save to database FIRST
             if self.mode == 'postgresql':
                 conn = self.get_connection()
                 cursor = conn.cursor()
@@ -292,17 +308,19 @@ class TunnelgrainDB:
                 with open(self.json_file, 'w') as f:
                     json.dump(data, f)
             
-            # Increment daily limit for test orders
+            # Increment daily limit for test orders AFTER successful creation
             if tier == 'test' and user_fingerprint:
                 self.increment_daily_limit(user_fingerprint)
             
-            # Start VPS timer
-            timer_started = self.start_vps_timer(order_number, tier, duration_minutes, vps_name)
-            
-            if timer_started:
-                logger.info(f"✅ Order created: {order_number} ({tier}) with VPS timer")
-            else:
-                logger.warning(f"⚠️ Order created: {order_number} ({tier}) but VPS timer failed")
+            # Try to start VPS timer but don't fail the order if it doesn't work
+            try:
+                timer_started = self.start_vps_timer(order_number, tier, duration_minutes, config_id, vps_name)
+                if timer_started:
+                    logger.info(f"✅ Order created: {order_number} ({tier}) with VPS timer")
+                else:
+                    logger.warning(f"⚠️ Order created: {order_number} ({tier}) but VPS timer failed - order still valid")
+            except Exception as e:
+                logger.warning(f"⚠️ VPS timer error (order still valid): {e}")
             
             return order_id, order_number
             
@@ -310,8 +328,8 @@ class TunnelgrainDB:
             logger.error(f"❌ Error creating order: {e}")
             return None, None
     
-    def start_vps_timer(self, order_number, tier, duration_minutes, vps_name='vps_1'):
-        """Start expiration timer on VPS"""
+    def start_vps_timer(self, order_number, tier, duration_minutes, config_id, vps_name='vps_1'):
+        """Start expiration timer on VPS - non-critical operation"""
         try:
             vps_endpoint = self.vps_endpoints.get(vps_name)
             if not vps_endpoint:
@@ -324,9 +342,10 @@ class TunnelgrainDB:
                 json={
                     'order_number': order_number,
                     'tier': tier,
-                    'duration_minutes': duration_minutes
+                    'duration_minutes': duration_minutes,
+                    'config_id': config_id  # Pass config_id to daemon
                 },
-                timeout=10
+                timeout=5  # Reduced timeout
             )
             
             if response.status_code == 200:

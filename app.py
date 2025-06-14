@@ -126,7 +126,7 @@ def get_client_fingerprint(request):
     real_ip = None
     
     # Try different headers that Render might use
-    for header in ['X-Real-IP', 'X-Forwarded-For', 'CF-Connecting-IP']:
+    for header in ['X-Real-IP', 'X-Forwarded-For', 'CF-Connecting-IP', 'True-Client-Ip']:
         ip_value = request.headers.get(header)
         if ip_value:
             # X-Forwarded-For can contain multiple IPs, take the first
@@ -261,17 +261,20 @@ def get_test_vpn():
         # Get already used configs for this fingerprint today
         used_configs = []
         if db.mode == 'postgresql':
-            conn = db.get_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT config_id FROM vpn_orders 
-                WHERE user_fingerprint = %s 
-                AND tier = 'test' 
-                AND created_at::date = CURRENT_DATE
-            """, (user_fingerprint,))
-            used_configs = [row[0] for row in cursor.fetchall()]
-            cursor.close()
-            conn.close()
+            try:
+                conn = db.get_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT config_id FROM vpn_orders 
+                    WHERE user_fingerprint = %s 
+                    AND tier = 'test' 
+                    AND created_at::date = CURRENT_DATE
+                """, (user_fingerprint,))
+                used_configs = [row[0] for row in cursor.fetchall()]
+                cursor.close()
+                conn.close()
+            except Exception as e:
+                logger.error(f"Error getting used configs: {e}")
         
         # Try to get an unused config
         unused_configs = [c for c in available_configs if c not in used_configs]
@@ -320,7 +323,7 @@ def get_test_vpn():
             'error': 'Service temporarily unavailable. Please try again.',
             'technical_details': str(e) if app.debug else None
         }), 500
-    
+
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     """Create Stripe checkout session for VPN purchase with proper error handling"""
@@ -454,7 +457,8 @@ def payment_success():
                 config_id = available_configs[0]
                 logger.info(f"Using fallback config: {config_id}")
             else:
-                return "Configuration error - please contact support@tunnelgrain.com with your payment confirmation", 500
+                # Still allow download with temporary order number
+                config_id = "temporary"
         
         # Create order with VPS timer
         user_fingerprint = get_client_fingerprint(request)
@@ -464,6 +468,8 @@ def payment_success():
             user_fingerprint=user_fingerprint,
             stripe_session_id=session_id
         )
+        
+        show_support_message = False
         
         if order_id:
             # Store in session for download access
@@ -484,9 +490,6 @@ def payment_success():
             
             logger.info(f"✅ Payment successful: {order_number}, tier: {tier}, config: {config_id}")
             
-            return render_template('payment_success.html', 
-                                 order_data=order_data, 
-                                 tier_config=SERVICE_TIERS[tier])
         else:
             logger.error(f"❌ Failed to create order for paid session {session_id}")
             # Still show success page but with support message
@@ -499,17 +502,19 @@ def payment_success():
                 'vps_name': vps_name
             }
             
+            show_support_message = True
+            
             # Store in session anyway for manual recovery
             session['purchase_order'] = order_data['order_number']
             session['purchase_tier'] = tier
             session['purchase_config'] = config_id
             session['purchase_ip'] = ip_address
             session['purchase_vps'] = vps_name
-            
-            return render_template('payment_success.html', 
-                                 order_data=order_data, 
-                                 tier_config=SERVICE_TIERS[tier],
-                                 show_support_message=True)
+        
+        return render_template('payment_success.html', 
+                             order_data=order_data, 
+                             tier_config=SERVICE_TIERS[tier],
+                             show_support_message=show_support_message)
             
     except stripe.error.StripeError as e:
         logger.error(f"❌ Stripe error during payment success: {e}")
@@ -517,7 +522,7 @@ def payment_success():
     except Exception as e:
         logger.error(f"❌ Payment success processing error: {e}")
         return f"Error processing payment: {str(e)}", 500
-    
+
 # === DOWNLOAD ROUTES ===
 
 @app.route('/download-test-config')
@@ -838,20 +843,29 @@ def db_status():
             
             # Get today's test count for this fingerprint
             cursor.execute("""
-                SELECT COUNT(*) as total_users,
-                       SUM(CASE WHEN date = CURRENT_DATE THEN test_count ELSE 0 END) as today_tests
-                FROM daily_limits
-                WHERE fingerprint = %s
+                SELECT COUNT(*) FROM daily_limits 
+                WHERE fingerprint = %s AND date = CURRENT_DATE
             """, (fp,))
             
             result = cursor.fetchone()
+            today_count = result[0] if result else 0
+            
+            # Also get test_count if record exists
+            cursor.execute("""
+                SELECT test_count FROM daily_limits 
+                WHERE fingerprint = %s AND date = CURRENT_DATE
+            """, (fp,))
+            
+            result = cursor.fetchone()
+            test_count = result[0] if result else 0
+            
             cursor.close()
             conn.close()
             
             return jsonify({
                 'database_mode': 'postgresql',
                 'your_fingerprint': fp,
-                'today_test_count': result[1] if result and result[1] else 0,
+                'today_test_count': test_count,
                 'can_test': db.check_daily_limit(fp, 'test')
             })
         else:

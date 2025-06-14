@@ -28,6 +28,13 @@
                                 <h5 class="fw-bold mb-1">{{ tier_config.name }} VPN</h5>
                                 <div class="mb-1"><strong>Order Number:</strong> <code>{{ order_data.order_number }}</code></div>
                                 <div class="mb-1"><strong>Server IP:</strong> <code>{{ order_data.ip_address }}</code></div>
+                                {% if show_support_message %}
+                                <div class="alert alert-warning mt-2 mb-0">
+                                    <small><i class="fas fa-exclamation-triangle me-2"></i>
+                                    There was an issue creating your VPN configuration. Your payment was successful. 
+                                    Please contact support@tunnelgrain.com with this order number for immediate assistance.</small>
+                                </div>
+                                {% endif %}
                                 <small class="text-muted">
                                     {% if tier_config.duration_days == 0 %}
                                         Active for 15 minutes
@@ -474,7 +481,7 @@
         // Auto-copy order number when clicked
         const orderNumberElements = document.querySelectorAll('code');
         orderNumberElements.forEach(element => {
-            if (element.textContent.match(/^(42|72)[A-Z0-9]{6}$/)) {
+            if (element.textContent.match(/^(42|72|SUPPORT-)[A-Z0-9]{6}$/)) {
                 element.style.cursor = 'pointer';
                 element.title = 'Click to copy order number';
                 
