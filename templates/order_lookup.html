@@ -50,7 +50,7 @@
                     
                     <!-- Results Container -->
                     <div id="orderResult" style="display: none;">
-                        <!-- Results will be inserted here -->
+                        <!-- Results will be inserted here by JavaScript -->
                     </div>
                     
                     <!-- Info Cards -->
@@ -73,7 +73,7 @@
                             <div class="text-center p-3">
                                 <i class="fas fa-download text-primary mb-2" style="font-size: 2rem;"></i>
                                 <h6 class="fw-bold">Easy Access</h6>
-                                <small class="text-muted">Download configs anytime</small>
+                                <small class="text-muted">Re-download configs</small>
                             </div>
                         </div>
                     </div>
@@ -123,9 +123,9 @@
                     <div class="text-center mb-3">
                         <i class="fas fa-headset text-warning" style="font-size: 3rem;"></i>
                     </div>
-                    <h5 class="fw-bold text-center mb-3">Support Team</h5>
+                    <h5 class="fw-bold text-center mb-3">Need Help?</h5>
                     <p class="text-muted">
-                        Can't locate your order? Contact support with your payment 
+                        Can't locate your order? Contact our support team with your payment 
                         details for assistance.
                     </p>
                 </div>
@@ -141,7 +141,7 @@
     </div>
 </section>
 
-<!-- Order Types -->
+<!-- Order Types Information -->
 <section class="section-padding">
     <div class="container">
         <div class="row justify-content-center">
@@ -236,7 +236,7 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
         return;
     }
     
-    // Show loading
+    // Show loading state
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking...';
     
@@ -253,13 +253,14 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
             showOrderDetails(data, orderNumber);
         } else {
             showResult('warning', 'Order Not Found', 
-                `Order ${orderNumber} was not found. Please check the number and try again.`);
+                `Order ${orderNumber} was not found. Please check the number and try again.<br><br>
+                <small>If you just placed this order, please wait a few minutes and try again.</small>`);
         }
         
     } catch (error) {
         console.error('Lookup error:', error);
         showResult('error', 'Connection Error', 
-            'Unable to check order status. Please try again.');
+            'Unable to check order status. Please try again in a moment.');
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
@@ -282,15 +283,25 @@ function showOrderDetails(data, orderNumber) {
     };
     const tierColor = tierColors[data.tier] || 'secondary';
     
+    // Format creation date
+    let formattedDate = 'Unknown';
+    if (data.assigned_at && data.assigned_at !== 'unknown') {
+        try {
+            formattedDate = new Date(data.assigned_at).toLocaleString();
+        } catch (e) {
+            formattedDate = data.assigned_at;
+        }
+    }
+    
     resultDiv.innerHTML = `
-        <div class="card ${isActive ? 'border-success' : 'border-danger'}">
+        <div class="card ${isActive ? 'border-success' : 'border-danger'} mb-4">
             <div class="card-header ${isActive ? 'bg-success' : 'bg-danger'} text-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <i class="fas fa-${isActive ? 'check-circle' : 'times-circle'} me-2"></i>
                         Order Found - ${isActive ? 'ACTIVE' : 'EXPIRED'}
                     </div>
-                    <span class="badge bg-white text-dark">${orderNumber}</span>
+                    <span class="badge bg-white text-dark fs-6">${orderNumber}</span>
                 </div>
             </div>
             
@@ -299,7 +310,7 @@ function showOrderDetails(data, orderNumber) {
                     <div class="col-md-6">
                         <h6 class="text-muted mb-1">Service Type</h6>
                         <h5 class="mb-0">
-                            <span class="badge bg-${tierColor}">${data.tier_name}</span>
+                            <span class="badge bg-${tierColor} fs-6">${data.tier_name || data.tier}</span>
                         </h5>
                     </div>
                     <div class="col-md-6">
@@ -314,72 +325,84 @@ function showOrderDetails(data, orderNumber) {
                 <div class="row mb-4">
                     <div class="col-md-6">
                         <h6 class="text-muted mb-1">Server IP</h6>
-                        <code class="bg-light p-2 rounded">${data.ip_address || '213.170.133.116'}</code>
+                        <code class="bg-light p-2 rounded d-inline-block">${data.ip_address}</code>
                     </div>
                     <div class="col-md-6">
                         <h6 class="text-muted mb-1">Config ID</h6>
-                        <code class="bg-light p-2 rounded">${data.config_id}</code>
+                        <code class="bg-light p-2 rounded d-inline-block">${data.config_id}</code>
                     </div>
                 </div>
                 
                 ${isActive ? `
                     <div class="alert alert-info mb-3">
                         <i class="fas fa-info-circle me-2"></i>
-                        <strong>Note:</strong> If you've already downloaded your files, you can re-download them here. 
-                        Your existing configuration will continue to work.
+                        <strong>Active VPN:</strong> Your VPN is currently active and working. 
+                        If you need to re-download your files, please use your original download links 
+                        or contact support for assistance.
                     </div>
                     
                     <div class="row g-2">
                         <div class="col-md-6">
-                            <a href="/download-${isTest ? 'test' : 'purchase'}-config" 
-                               class="btn btn-primary w-100">
-                                <i class="fas fa-file-download me-2"></i>
-                                Download Config File
+                            <a href="${isTest ? '/test' : '/order'}" 
+                               class="btn btn-outline-primary w-100">
+                                <i class="fas fa-${isTest ? 'flask' : 'shopping-cart'} me-2"></i>
+                                ${isTest ? 'Get Another Test' : 'Purchase Additional'}
                             </a>
                         </div>
                         <div class="col-md-6">
-                            <a href="/download-${isTest ? 'test' : 'purchase'}-qr" 
-                               class="btn btn-outline-primary w-100">
-                                <i class="fas fa-qrcode me-2"></i>
-                                Download QR Code
+                            <a href="/contact" 
+                               class="btn btn-primary w-100">
+                                <i class="fas fa-envelope me-2"></i>
+                                Contact Support
                             </a>
                         </div>
                     </div>
                 ` : `
-                    <div class="alert alert-warning">
+                    <div class="alert alert-warning mb-3">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>This VPN access has expired.</strong>
+                        <strong>VPN Expired:</strong> This VPN access has expired and is no longer active.
                         ${isTest ? 
-                            'Test VPNs expire after 15 minutes. You can get another free test or purchase a plan.' :
-                            'Please purchase a new plan to continue using our VPN service.'
+                            ' Test VPNs expire after 15 minutes. You can get another free test or purchase a plan.' :
+                            ' Please purchase a new plan to continue using our VPN service.'
                         }
                     </div>
                     
                     <div class="row g-2">
-                        ${isTest ? `
-                            <div class="col-md-6">
-                                <a href="/test" class="btn btn-success w-100">
-                                    <i class="fas fa-flask me-2"></i>
-                                    Get New Test
-                                </a>
-                            </div>
-                        ` : ''}
-                        <div class="${isTest ? 'col-md-6' : 'col-12'}">
-                            <a href="/order" class="btn btn-primary w-100">
-                                <i class="fas fa-shopping-cart me-2"></i>
-                                Purchase New Plan
+                        <div class="col-md-6">
+                            <a href="${isTest ? '/test' : '/order'}" 
+                               class="btn btn-success w-100">
+                                <i class="fas fa-${isTest ? 'flask' : 'shopping-cart'} me-2"></i>
+                                ${isTest ? 'Get New Test' : 'Purchase New Plan'}
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="/contact" 
+                               class="btn btn-outline-primary w-100">
+                                <i class="fas fa-envelope me-2"></i>
+                                Contact Support
                             </a>
                         </div>
                     </div>
                 `}
             </div>
             
-            <div class="card-footer text-muted">
-                <small>
-                    <i class="fas fa-calendar me-1"></i>
-                    Assigned: ${data.assigned_at ? new Date(data.assigned_at).toLocaleString() : 'Unknown'}
-                    ${data.timer_started ? ' • <i class="fas fa-check-circle text-success"></i> Timer Active' : ''}
-                </small>
+            <div class="card-footer bg-light">
+                <div class="row text-muted">
+                    <div class="col-md-6">
+                        <small>
+                            <i class="fas fa-calendar me-1"></i>
+                            Created: ${formattedDate}
+                        </small>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <small>
+                            ${data.timer_started ? 
+                                '<i class="fas fa-check-circle text-success me-1"></i>Timer Active' : 
+                                '<i class="fas fa-clock text-muted me-1"></i>Timer Status Unknown'
+                            }
+                        </small>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -397,13 +420,20 @@ function showResult(type, title, message) {
         'info': 'alert-info'
     }[type] || 'alert-secondary';
     
+    const iconType = {
+        'success': 'check-circle',
+        'error': 'exclamation-circle',
+        'warning': 'exclamation-triangle',
+        'info': 'info-circle'
+    }[type] || 'info-circle';
+    
     resultDiv.innerHTML = `
-        <div class="alert ${alertClass}">
+        <div class="alert ${alertClass} mb-4">
             <h5 class="alert-heading mb-2">
-                <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle me-2"></i>
+                <i class="fas fa-${iconType} me-2"></i>
                 ${title}
             </h5>
-            <p class="mb-0">${message}</p>
+            <div>${message}</div>
         </div>
     `;
     
@@ -411,13 +441,13 @@ function showResult(type, title, message) {
     resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// Auto-format input
+// Auto-format and validate input
 document.getElementById('orderNumber').addEventListener('input', function(e) {
     let value = e.target.value.toUpperCase().replace(/[^A-F0-9]/g, '');
     if (value.length > 8) value = value.substring(0, 8);
     e.target.value = value;
     
-    // Visual validation
+    // Visual validation feedback
     if (value.length === 8) {
         const isValid = value.match(/^(42|72)[A-F0-9]{6}$/);
         e.target.classList.toggle('is-valid', isValid);
@@ -427,24 +457,49 @@ document.getElementById('orderNumber').addEventListener('input', function(e) {
     }
 });
 
-// Clear results on focus
+// Clear results when input gains focus
 document.getElementById('orderNumber').addEventListener('focus', function() {
     const resultDiv = document.getElementById('orderResult');
-    resultDiv.style.display = 'none';
+    if (resultDiv.style.display !== 'none') {
+        resultDiv.style.display = 'none';
+    }
 });
 
-// Add copy functionality for codes
+// Copy functionality for code elements
 document.addEventListener('click', function(e) {
     if (e.target.tagName === 'CODE') {
         const text = e.target.textContent;
-        navigator.clipboard.writeText(text).then(() => {
-            const original = e.target.innerHTML;
-            e.target.innerHTML = '<i class="fas fa-check text-success"></i> Copied!';
-            setTimeout(() => {
-                e.target.innerHTML = original;
-            }, 1500);
-        });
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                const original = e.target.innerHTML;
+                e.target.innerHTML = '<i class="fas fa-check text-success"></i> Copied!';
+                e.target.style.cursor = 'default';
+                setTimeout(() => {
+                    e.target.innerHTML = original;
+                    e.target.style.cursor = 'pointer';
+                }, 1500);
+            }).catch(() => {
+                // Fallback for older browsers
+                e.target.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    e.target.style.backgroundColor = '';
+                }, 1000);
+            });
+        }
     }
+});
+
+// Add hover effect to clickable code elements
+document.addEventListener('DOMContentLoaded', function() {
+    const style = document.createElement('style');
+    style.textContent = `
+        code:hover {
+            cursor: pointer;
+            background-color: #e9ecef !important;
+            transition: background-color 0.2s ease;
+        }
+    `;
+    document.head.appendChild(style);
 });
 </script>
 {% endblock %}
