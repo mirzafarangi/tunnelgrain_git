@@ -1,5 +1,5 @@
 #!/bin/bash
-# Complete VPS Setup v5.0 FINAL - With Working Expiration System
+# Complete VPS Setup v5.1 FINAL - Fixed Package Conflicts
 # This includes everything: WireGuard + API + FIXED Expiration Daemon
 
 set -e
@@ -32,7 +32,7 @@ success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-echo -e "${CYAN}🚀 TUNNELGRAIN COMPLETE SETUP v5.0 FINAL${NC}"
+echo -e "${CYAN}🚀 TUNNELGRAIN COMPLETE SETUP v5.1 FINAL${NC}"
 echo "=============================================="
 echo "  📅 Setup Date: $(date)"
 echo "  🖥️  Server IP: $SERVER_IP"
@@ -43,15 +43,15 @@ echo "=============================================="
 log "Installing system foundation..."
 apt update -qq && apt upgrade -yqq
 
-# Install required packages
+# Install required packages (removed iptables-persistent due to conflict)
 apt install -yqq \
     wireguard wireguard-tools \
     qrencode \
     python3 python3-venv python3-pip \
     ufw curl jq \
     net-tools htop nano \
-    iptables-persistent \
-    systemd
+    systemd \
+    iptables
 
 success "System packages installed"
 
@@ -88,7 +88,7 @@ done
 # Set proper permissions
 chmod 700 /opt/tunnelgrain/keys
 chmod 755 /opt/tunnelgrain/{scripts,api,logs}
-chmod 644 /opt/tunnelgrain/{configs,qr_codes}
+chmod 755 /opt/tunnelgrain/{configs,qr_codes}
 
 success "Directory structure created"
 
@@ -251,7 +251,7 @@ log "Creating FIXED expiration daemon..."
 cat > /opt/tunnelgrain/expiration_daemon.py << 'FIXED_DAEMON_EOF'
 #!/usr/bin/env python3
 """
-Tunnelgrain Expiration Daemon v5.0 FINAL
+Tunnelgrain Expiration Daemon v5.1 FINAL
 Properly removes peers from WireGuard when expired
 FIXED VERSION - Works correctly with peer removal
 """
@@ -505,7 +505,6 @@ class ExpirationManager:
                 lines = f.readlines()
             
             new_lines = []
-            skip_section = False
             i = 0
             
             while i < len(lines):
@@ -633,7 +632,7 @@ def get_status():
         
         return jsonify({
             'daemon': 'running',
-            'version': '5.0-final',
+            'version': '5.1-final',
             'timestamp': datetime.now().isoformat(),
             'active_timers': active_count,
             'expired_timers': expired_count,
@@ -734,7 +733,7 @@ def health():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'version': '5.0-final',
+        'version': '5.1-final',
         'timestamp': datetime.now().isoformat()
     })
 
@@ -752,7 +751,7 @@ if __name__ == '__main__':
     expiration_thread = threading.Thread(target=manager.expiration_loop, daemon=True)
     expiration_thread.start()
     
-    logger.info("🚀 Tunnelgrain Expiration Daemon v5.0-FINAL starting")
+    logger.info("🚀 Tunnelgrain Expiration Daemon v5.1-FINAL starting")
     app.run(host='0.0.0.0', port=8081, debug=False)
 FIXED_DAEMON_EOF
 
@@ -765,7 +764,7 @@ log "Creating systemd service..."
 
 cat > /etc/systemd/system/tunnelgrain-expiration.service << EOF
 [Unit]
-Description=Tunnelgrain VPN Expiration Daemon v5.0
+Description=Tunnelgrain VPN Expiration Daemon v5.1
 After=network.target wg-quick@wg0.service
 Wants=wg-quick@wg0.service
 
@@ -812,10 +811,10 @@ log "Creating management scripts..."
 # Status script
 cat > /opt/tunnelgrain/scripts/status.sh << 'STATUS_EOF'
 #!/bin/bash
-echo "🚀 TUNNELGRAIN STATUS v5.0"
+echo "🚀 TUNNELGRAIN STATUS v5.1"
 echo "=========================="
 echo "Time: $(date)"
-echo "Server: $(hostname) ($(curl -s ifconfig.me))"
+echo "Server: $(hostname) ($(curl -s ifconfig.me 2>/dev/null || echo "unknown"))"
 echo ""
 
 echo "🔧 Services:"
@@ -839,7 +838,7 @@ echo "🌐 WireGuard Status:"
 if [ "$wg_status" = "active" ]; then
     peer_count=$(wg show wg0 | grep -c "peer:" || echo "0")
     echo "  Active Peers: $peer_count"
-    if [ "$peer_count" -gt 0 ]; then
+    if [ "$peer_count" -gt 0 ] && [ "$peer_count" -le 5 ]; then
         echo "  Latest handshakes:"
         wg show wg0 latest-handshakes | head -3 | while read line; do
             echo "    $line"
@@ -867,7 +866,8 @@ fi
 
 echo ""
 echo "🧪 Quick Tests:"
-echo "  curl http://$(curl -s ifconfig.me):8081/api/status"
+public_ip=$(curl -s ifconfig.me 2>/dev/null || echo "213.170.133.116")
+echo "  curl http://$public_ip:8081/api/status"
 echo "  /opt/tunnelgrain/scripts/status.sh"
 echo ""
 STATUS_EOF
@@ -995,6 +995,9 @@ if [ "$wg_status" = "active" ] && [ "$exp_status" = "active" ] && [ "$api_test" 
     echo "  systemctl status tunnelgrain-expiration"
     echo "  journalctl -u tunnelgrain-expiration -f"
     echo "  /opt/tunnelgrain/scripts/backup.sh"
+    echo ""
+    echo -e "${YELLOW}⚠️  System Notice:${NC}"
+    echo "  Kernel update detected - consider rebooting when convenient"
     echo ""
     success "🎯 VPN business system ready! Test expiration works correctly."
 else
