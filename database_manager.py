@@ -183,8 +183,8 @@ class TunnelgrainDB:
             return None
     
     def create_order(self, tier, config_id=None, user_fingerprint=None, 
-                    vps_name='vps_1', vps_ip='213.170.133.116', 
-                    stripe_session_id=None):
+                vps_name='vps_1', vps_ip='213.170.133.116', 
+                stripe_session_id=None):
         """Create new VPN order with automatic config assignment"""
         try:
             # If no config_id provided, get an available one
@@ -196,11 +196,9 @@ class TunnelgrainDB:
             
             order_id = str(uuid.uuid4())
             
-            # Generate order number based on tier
-            if tier == 'test':
-                order_number = f"72{uuid.uuid4().hex[:6].upper()}"
-            else:
-                order_number = f"42{uuid.uuid4().hex[:6].upper()}"
+            # 🔥 FIX: USE CONFIG_ID AS ORDER_NUMBER!
+            # This ensures the order number matches the actual config file
+            order_number = config_id  # Use config_id directly as order_number
             
             # Calculate expiration
             now = datetime.now()
@@ -263,13 +261,12 @@ class TunnelgrainDB:
             
             logger.info(f"✅ Order created: {order_number} (tier: {tier}, config: {config_id})")
             
-            # 🔥 CRITICAL: ADD THE MISSING RETURN STATEMENT!
             return order_id, order_number
             
         except Exception as e:
             logger.error(f"❌ Error creating order: {e}", exc_info=True)
             return None, None
-    
+        
     def start_vps_timer(self, order_number, tier, duration_minutes, config_id, vps_name='vps_1'):
         """Start expiration timer on VPS"""
         try:
