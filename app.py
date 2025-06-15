@@ -426,7 +426,7 @@ def payment_success():
 
 @app.route('/download-test-config')
 def download_test_config():
-    """Download test VPN config"""
+    """Download test VPN config and start expiration timer"""
     if 'test_config' not in session:
         return "No test VPN assigned", 404
     
@@ -442,6 +442,26 @@ def download_test_config():
             logger.error(f"Config file not found: {config_path}")
             return "Config file not found. Please contact support.", 404
         
+        # 🔥 START VPS TIMER (ONLY FOR CONFIG DOWNLOADS!)
+        try:
+            logger.info(f"🔥 Starting VPS timer for test config: {order_number}")
+            success = db.start_vps_timer(
+                order_number=order_number,
+                tier='test',
+                duration_minutes=15,  # 15 minutes for test
+                config_id=config_id,
+                vps_name='vps_1'
+            )
+            
+            if success:
+                logger.info(f"✅ VPS timer started successfully for {order_number}")
+            else:
+                logger.warning(f"⚠️ VPS timer failed for {order_number} - config will still work but won't auto-expire")
+                
+        except Exception as timer_error:
+            logger.error(f"❌ Timer error for {order_number}: {timer_error}")
+            # Continue with download even if timer fails
+        
         logger.info(f"✅ Serving test config: {order_number} ({config_id}) from {config_path}")
         
         return send_file(
@@ -456,7 +476,7 @@ def download_test_config():
 
 @app.route('/download-test-qr')
 def download_test_qr():
-    """Download test VPN QR code"""
+    """Download test VPN QR code (NO timer needed - QR is just visual)"""
     if 'test_config' not in session:
         return "No test VPN assigned", 404
     
@@ -486,7 +506,7 @@ def download_test_qr():
 
 @app.route('/download-purchase-config')
 def download_purchase_config():
-    """Download purchased VPN config"""
+    """Download purchased VPN config and start expiration timer"""
     if 'purchase_config' not in session:
         return "No VPN purchased", 404
     
@@ -503,6 +523,37 @@ def download_purchase_config():
             logger.error(f"Config file not found: {config_path}")
             return "Config file not found. Please contact support.", 404
         
+        # 🔥 START VPS TIMER (ONLY FOR CONFIG DOWNLOADS!)
+        try:
+            # Calculate duration based on tier
+            duration_map = {
+                'monthly': 30 * 24 * 60,  # 30 days in minutes
+                'quarterly': 90 * 24 * 60,  # 90 days in minutes
+                'biannual': 180 * 24 * 60,  # 180 days in minutes
+                'annual': 365 * 24 * 60,  # 365 days in minutes
+                'lifetime': 36500 * 24 * 60,  # 100 years in minutes
+            }
+            
+            duration_minutes = duration_map.get(tier, 30 * 24 * 60)
+            
+            logger.info(f"🔥 Starting VPS timer for {tier} config: {order_number} ({duration_minutes} minutes)")
+            success = db.start_vps_timer(
+                order_number=order_number,
+                tier=tier,
+                duration_minutes=duration_minutes,
+                config_id=config_id,
+                vps_name='vps_1'
+            )
+            
+            if success:
+                logger.info(f"✅ VPS timer started successfully for {order_number}")
+            else:
+                logger.warning(f"⚠️ VPS timer failed for {order_number} - config will still work but won't auto-expire")
+                
+        except Exception as timer_error:
+            logger.error(f"❌ Timer error for {order_number}: {timer_error}")
+            # Continue with download even if timer fails
+        
         logger.info(f"✅ Serving purchase config: {order_number} ({tier}/{config_id}) from {config_path}")
         
         return send_file(
@@ -517,7 +568,7 @@ def download_purchase_config():
 
 @app.route('/download-purchase-qr')
 def download_purchase_qr():
-    """Download purchased VPN QR code"""
+    """Download purchased VPN QR code (NO timer needed - QR is just visual)"""
     if 'purchase_config' not in session:
         return "No VPN purchased", 404
     
@@ -545,6 +596,84 @@ def download_purchase_qr():
     except Exception as e:
         logger.error(f"❌ Error serving purchase QR: {e}")
         return "Error serving QR code. Please contact support.", 500
+    
+
+
+# === MANUAL TIMER MANAGEMENT (for debugging) ===
+
+@app.route('/admin/start-timer/<order_number>', methods=['POST'])
+@admin_required
+def admin_start_timer(order_number):
+    """Manually start timer for an order"""
+    try:
+        # Get order from database
+        order = db.get_order_by_number(order_number)
+        if not order:
+            return jsonify({'error': 'Order not found'}), 404
+        
+        # Calculate duration based on tier
+        duration_map = {
+            'test': 15,  # 15 minutes
+            'monthly': 30 * 24 * 60,  # 30 days in minutes
+            'quarterly': 90 * 24 * 60,  # 90 days in minutes
+            'biannual': 180 * 24 * 60,  # 180 days in minutes
+            'annual': 365 * 24 * 60,  # 365 days in minutes
+            'lifetime': 36500 * 24 * 60,  # 100 years in minutes
+        }
+        
+        tier = order['tier']
+        duration_minutes = duration_map.get(tier, 30 * 24 * 60)
+        
+        # Start timer
+        success = db.start_vps_timer(
+            order_number=order_number,
+            tier=tier,
+            duration_minutes=duration_minutes,
+            config_id=order['config_id'],
+            vps_name='vps_1'
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Timer started for {order_number}',
+                'duration_minutes': duration_minutes
+            })
+        else:
+            return jsonify({'error': 'Failed to start timer'}), 500
+            
+    except Exception as e:
+        logger.error(f"❌ Admin timer start error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/check-vps-status')
+@admin_required
+def admin_check_vps_status():
+    """Check VPS daemon status"""
+    try:
+        import requests
+        response = requests.get(f"{VPS_ENDPOINT}/api/status", timeout=5)
+        
+        if response.status_code == 200:
+            vps_data = response.json()
+            return jsonify({
+                'success': True,
+                'vps_status': vps_data,
+                'connection': 'healthy'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'VPS returned {response.status_code}',
+                'connection': 'error'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'connection': 'failed'
+        }), 500
     
 # === ORDER LOOKUP ===
 
