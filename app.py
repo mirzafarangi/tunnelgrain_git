@@ -965,6 +965,134 @@ def internal_error(error):
     logger.error(f"❌ 500 Internal error: {error}")
     return render_template('500.html'), 500
 
+# === TESTS ===
+
+@app.route('/debug/test-vps')
+def debug_test_vps():
+    """Test VPS connection and timer functionality"""
+    try:
+        import requests
+        import time
+        
+        start_time = time.time()
+        
+        # Test 1: Basic VPS connection
+        response = requests.get(f"{VPS_ENDPOINT}/api/status", timeout=10)
+        connection_time = time.time() - start_time
+        
+        if response.status_code != 200:
+            return jsonify({
+                'success': False,
+                'test': 'vps_connection',
+                'vps_endpoint': VPS_ENDPOINT,
+                'error': f'HTTP {response.status_code}',
+                'response_text': response.text[:500],
+                'connection_time': round(connection_time, 2)
+            })
+        
+        vps_data = response.json()
+        
+        # Test 2: Try starting a dummy timer
+        dummy_timer_response = None
+        try:
+            dummy_response = requests.post(
+                f"{VPS_ENDPOINT}/api/start-timer",
+                json={
+                    'order_number': 'DEBUG_TEST',
+                    'tier': 'test',
+                    'duration_minutes': 1,
+                    'config_id': 'DEBUG'
+                },
+                timeout=10
+            )
+            
+            if dummy_response.status_code == 200:
+                dummy_timer_response = "Timer test successful"
+            else:
+                dummy_timer_response = f"Timer test failed: {dummy_response.status_code} - {dummy_response.text}"
+                
+        except Exception as timer_error:
+            dummy_timer_response = f"Timer test error: {str(timer_error)}"
+        
+        return jsonify({
+            'success': True,
+            'test': 'vps_connection',
+            'vps_endpoint': VPS_ENDPOINT,
+            'connection_time_seconds': round(connection_time, 2),
+            'vps_status': vps_data,
+            'timer_test': dummy_timer_response,
+            'render_can_reach_vps': True,
+            'environment_check': {
+                'VPS_1_ENDPOINT': os.environ.get('VPS_1_ENDPOINT', 'NOT SET'),
+                'current_vps_endpoint': VPS_ENDPOINT
+            }
+        })
+        
+    except requests.exceptions.Timeout:
+        return jsonify({
+            'success': False,
+            'test': 'vps_connection',
+            'vps_endpoint': VPS_ENDPOINT,
+            'error': 'Connection timeout (>10 seconds)',
+            'render_can_reach_vps': False
+        })
+    except requests.exceptions.ConnectionError as e:
+        return jsonify({
+            'success': False,
+            'test': 'vps_connection',
+            'vps_endpoint': VPS_ENDPOINT,
+            'error': f'Connection failed: {str(e)}',
+            'render_can_reach_vps': False
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'test': 'vps_connection',
+            'vps_endpoint': VPS_ENDPOINT,
+            'error': f'Unexpected error: {str(e)}',
+            'render_can_reach_vps': False
+        })
+
+@app.route('/admin/cleanup-duplicates', methods=['POST'])
+@admin_required
+def cleanup_duplicates():
+    """Clean up duplicate test orders"""
+    try:
+        if db.mode == 'postgresql':
+            conn = db.get_connection()
+            cursor = conn.cursor()
+            
+            # Delete duplicate orders (keep the latest one for each config)
+            cursor.execute("""
+                DELETE FROM vpn_orders 
+                WHERE order_id IN (
+                    SELECT order_id FROM (
+                        SELECT order_id, 
+                               ROW_NUMBER() OVER (PARTITION BY config_id ORDER BY created_at DESC) as rn
+                        FROM vpn_orders 
+                        WHERE tier = 'test'
+                    ) t WHERE t.rn > 1
+                )
+            """)
+            
+            deleted_count = cursor.rowcount
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'deleted_count': deleted_count,
+                'message': f'Cleaned up {deleted_count} duplicate orders'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Cleanup only available in PostgreSQL mode'
+            })
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 # === MAIN EXECUTION ===
 
 if __name__ == '__main__':
