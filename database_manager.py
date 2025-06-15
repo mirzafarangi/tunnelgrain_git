@@ -263,6 +263,8 @@ class TunnelgrainDB:
             
             logger.info(f"✅ Order created: {order_number} (tier: {tier}, config: {config_id})")
             
+            # 🔥 CRITICAL: ADD THE MISSING RETURN STATEMENT!
+            return order_id, order_number
             
         except Exception as e:
             logger.error(f"❌ Error creating order: {e}", exc_info=True)
@@ -285,7 +287,7 @@ class TunnelgrainDB:
                     'duration_minutes': duration_minutes,
                     'config_id': config_id
                 },
-                timeout=5  # Increased timeout
+                timeout=10  # Increased timeout
             )
             
             if response.status_code == 200:
