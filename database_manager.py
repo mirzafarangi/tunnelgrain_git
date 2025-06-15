@@ -263,13 +263,6 @@ class TunnelgrainDB:
             
             logger.info(f"✅ Order created: {order_number} (tier: {tier}, config: {config_id})")
             
-            # Try to start VPS timer but don't fail if it doesn't work
-            try:
-                self.start_vps_timer(order_number, tier, duration_minutes, config_id, vps_name)
-            except Exception as e:
-                logger.warning(f"⚠️ VPS timer failed (non-critical): {e}")
-            
-            return order_id, order_number
             
         except Exception as e:
             logger.error(f"❌ Error creating order: {e}", exc_info=True)
